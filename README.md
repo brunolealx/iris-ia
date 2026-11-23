@@ -50,7 +50,7 @@ Passo a passo de instalação: **[docs/DEPLOY.md](docs/DEPLOY.md)** · Diagramas
 
 ```bash
 npm install                 # na raiz (workspaces)
-npm test                    # testes do worker (25 cenários)
+npm test                    # testes do worker (23 cenários)
 npm run dev:worker          # http://localhost:8080
 npm run dev:web             # http://localhost:3000
 ```
