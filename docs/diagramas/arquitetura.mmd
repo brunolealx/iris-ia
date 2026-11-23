@@ -1,0 +1,47 @@
+flowchart LR
+  classDef ext fill:#0d0f0d,stroke:#22c55e,color:#e8f5e9
+  classDef core fill:#062b14,stroke:#22c55e,color:#e8f5e9,stroke-width:2px
+  classDef db fill:#000,stroke:#16a34a,color:#e8f5e9
+
+  subgraph Clientes["Clientes da loja"]
+    WAU["Cliente no WhatsApp"]:::ext
+    MLU["Comprador no Mercado Livre"]:::ext
+  end
+
+  subgraph Lojista["Lojista (assinante da Iris)"]
+    BROWSER["Navegador / celular"]:::ext
+    SYS["Sistema do lojista<br/>(loja virtual, ERP)"]:::ext
+  end
+
+  subgraph Iris["Plataforma Iris"]
+    WEB["Painel Next.js + Astryx<br/>Vercel (grátis)"]:::core
+    WORKER["Worker Node.js<br/>webhooks · fila · IA<br/>Oracle Cloud Free"]:::core
+    DB[("Supabase Postgres<br/>RLS por empresa<br/>segredos AES-256")]:::db
+  end
+
+  subgraph Servicos["Serviços externos"]
+    META["Meta WhatsApp<br/>Cloud API"]:::ext
+    ML["API Mercado Livre"]:::ext
+    CLAUDE["Claude API<br/>Haiku / Sonnet"]:::ext
+    OMIE["Omie ERP<br/>produtos · NF-e"]:::ext
+    GOOGLE["Google Drive<br/>e Planilhas"]:::ext
+    MP["Mercado Pago<br/>assinaturas"]:::ext
+  end
+
+  WAU <--> META
+  MLU <--> ML
+  BROWSER -->|login, aprovar respostas, CRM| WEB
+  WEB <-->|RLS| DB
+  WEB -->|OAuth: ML, Google, Meta| Servicos
+  META -->|webhook| WORKER
+  ML -->|notificações| WORKER
+  MP -->|webhook| WORKER
+  SYS -->|API /api/v1| WORKER
+  WORKER -->|webhooks assinados| SYS
+  WORKER <-->|service_role| DB
+  WORKER --> CLAUDE
+  WORKER -->|respostas| META
+  WORKER -->|respostas, NF-e| ML
+  WORKER <-->|produtos, pedidos, NF-e| OMIE
+  WORKER -->|pastas, planilha, XML| GOOGLE
+  WEB -->|checkout| MP

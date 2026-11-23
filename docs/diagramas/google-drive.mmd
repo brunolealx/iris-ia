@@ -1,0 +1,26 @@
+flowchart LR
+  classDef f fill:#062b14,stroke:#22c55e,color:#e8f5e9
+  classDef s fill:#000,stroke:#16a34a,color:#e8f5e9
+
+  ROOT["📁 Iris — Nome da Empresa"]:::f
+  ROOT --> PL["📊 Iris — Gestão (planilha)"]:::s
+  ROOT --> NF["📁 Notas Fiscais › ano › mês"]:::f
+  ROOT --> VE["📁 Vendas"]:::f
+  ROOT --> FU["📁 Funcionários"]:::f
+  ROOT --> FI["📁 Financeiro"]:::f
+  ROOT --> PR["📁 Produtos"]:::f
+  ROOT --> FO["📁 Fornecedores"]:::f
+  ROOT --> CO["📁 Contratos"]:::f
+  ROOT --> RE["📁 Relatórios"]:::f
+  ROOT --> MK["📁 Marketing"]:::f
+
+  PL --> T1["Painel (indicadores)"]:::s
+  PL --> T2["Vendas + comissões"]:::s
+  PL --> T3["Produtos + margem + reposição"]:::s
+  PL --> T4["Clientes"]:::s
+  PL --> T5["Funcionários"]:::s
+  PL --> T6["Folha de Pagamento + FGTS"]:::s
+  PL --> T7["Folgas e Férias"]:::s
+  PL --> T8["Contas a Pagar / Receber"]:::s
+  PL --> T9["Fluxo de Caixa"]:::s
+  PL --> T10["Fornecedores"]:::s

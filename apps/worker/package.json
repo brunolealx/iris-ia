@@ -1,0 +1,16 @@
+{
+  "name": "@iris/worker",
+  "version": "0.2.0",
+  "description": "Iris — webhooks, fila e IA (sem dependências externas)",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/index.js",
+    "dev": "node --env-file-if-exists=.env --watch src/index.js",
+    "test": "node --test \"test/**/*.test.js\""
+  },
+  "dependencies": {
+    "@iris/shared": "*"
+  }
+}

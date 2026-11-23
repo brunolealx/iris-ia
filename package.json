@@ -1,15 +1,13 @@
 {
   "name": "iris-ia",
-  "version": "0.1.0",
-  "description": "Iris — IA de atendimento e vendas para WhatsApp e Mercado Livre",
-  "type": "module",
   "private": true,
-  "engines": {
-    "node": ">=22.13"
-  },
+  "description": "Iris — IA de atendimento e vendas (SaaS) para WhatsApp e Mercado Livre",
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "start": "node --env-file-if-exists=.env --no-warnings=ExperimentalWarning src/server.js",
-    "dev": "node --env-file-if-exists=.env --no-warnings=ExperimentalWarning --watch src/server.js",
-    "test": "node --no-warnings=ExperimentalWarning --test \"test/**/*.test.js\""
-  }
+    "dev:web": "npm run dev -w @iris/web",
+    "dev:worker": "npm run dev -w @iris/worker",
+    "build": "npm run build -w @iris/web",
+    "test": "npm test -w @iris/worker"
+  },
+  "engines": { "node": ">=22.13" }
 }

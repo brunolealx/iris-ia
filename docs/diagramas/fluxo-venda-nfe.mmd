@@ -1,0 +1,23 @@
+flowchart TD
+  classDef s fill:#062b14,stroke:#22c55e,color:#e8f5e9
+  classDef d fill:#000,stroke:#eab308,color:#e8f5e9
+  classDef e fill:#0d0f0d,stroke:#16a34a,color:#e8f5e9
+
+  A["Venda no Mercado Livre"]:::e --> B["Notificação orders_v2"]:::s
+  B --> C["Worker busca pedido e envio"]:::s
+  C --> D["Salva venda + contato no CRM<br/>etapa: Cliente"]:::s
+  D --> G1["Linha nova na planilha<br/>Google Drive › Vendas"]:::s
+  D --> H1["Webhook order.created<br/>para o sistema do lojista"]:::s
+  D --> E{"Pago e NF-e ligada<br/>no plano Pro?"}:::d
+  E -- não --> FIM["Fim"]:::e
+  E -- sim --> F{"Logística Full?"}:::d
+  F -- sim --> F1["ML emite a nota<br/>status: emitida pelo ML"]:::e
+  F -- não --> O1["Cria cliente e pedido na Omie<br/>(SKU do ML = SKU da Omie)"]:::s
+  O1 --> M{"Modo da NF-e"}:::d
+  M -- "só pedido" --> O2["Lojista fatura na Omie"]:::e
+  M -- automático --> O3["Fatura o pedido na Omie<br/>(Omie transmite à SEFAZ)"]:::s
+  O3 --> O4["Aguarda autorização<br/>e baixa o XML"]:::s
+  O4 --> G2["Salva XML no Drive<br/>Notas Fiscais/ano/mês"]:::s
+  O4 --> L{"Logística aceita anexar?"}:::d
+  L -- sim --> L1["POST /packs/:id/fiscal_documents<br/>ML gera o DANFE"]:::s
+  L -- "drop_off / cross_docking" --> L2["Avisa: enviar pelo fluxo fiscal do ML"]:::e

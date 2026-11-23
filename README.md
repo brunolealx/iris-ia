@@ -1,98 +1,56 @@
-# Iris 🌈
+# Iris 🌈 — IA de vendas para lojistas (SaaS)
 
-**IA de atendimento e vendas para WhatsApp e Mercado Livre.**
+A Iris atende os clientes da loja no **WhatsApp** (API oficial da Meta) e no **Mercado Livre** com IA (Claude), organiza tudo num **CRM**, registra **vendas**, emite **nota fiscal pela Omie** e mantém **pastas e planilhas de gestão no Google Drive** de cada cliente. Você vende a Iris por assinatura mensal (Mercado Pago).
 
-Na mitologia grega, Íris é a mensageira dos deuses. Aqui ela recebe as mensagens dos seus clientes, escreve a resposta com o Claude e envia sozinha ou deixa para você aprovar.
+![Arquitetura](docs/diagramas/arquitetura.png)
 
-## Como funciona
+## Módulos
 
-```
-WhatsApp (Meta) ─┐                         ┌─► envia direto (modo auto + caso seguro)
-                 ├─► webhook ─► fila ─► Claude ─┤
-Mercado Livre  ──┘   (200 na hora)  (SQLite)   └─► painel /admin para você aprovar
-```
+| Módulo | O que faz | Onde está |
+|---|---|---|
+| **Painel** | Landing com planos, cadastro/login, início, conversas (aprovar respostas), CRM (funil), vendas e NF-e, produtos, IA, integrações, assinatura | `apps/web` (Next.js 15 + React 19 + **Astryx** da Meta, tema preto e verde) |
+| **Admin da plataforma** | Todos os clientes, MRR, uso da IA, trocar plano/status | `apps/web/src/app/admin` |
+| **Worker** | Webhooks (Meta, ML, Mercado Pago), fila, IA, envios, Omie, NF-e, Google, API pública, webhooks de saída | `apps/worker` (Node 22, **sem dependências**) |
+| **Banco** | Multiempresa com RLS, segredos criptografados (AES-256-GCM), fila, uso mensal | `supabase/migrations/0001_iris.sql` |
+| **Compartilhado** | Criptografia, regras de envio (o que vai para aprovação), regras de plano | `packages/shared` |
 
-- **Webhooks oficiais**: sem automação de navegador e sem risco de banimento do WhatsApp.
-- **Responde 200 em milissegundos** (o ML exige até 500 ms). O Claude roda depois, pela fila.
-- **Modo sugestão** (padrão): a Iris escreve e você aprova, edita ou descarta no painel.
-- **Modo auto**: envia sozinha, mas manda para o painel quando:
-  - o assunto é sensível (reembolso, cancelamento, troca, desconto, pagamento, defeito, atraso...);
-  - a IA não tem certeza ou pediu um humano;
-  - no ML, a resposta tem link, telefone ou e-mail (o ML proíbe).
-- **Trava de custo**: limite diário de chamadas ao Claude (`MAX_CLAUDE_CALLS_PER_DAY`).
-- **Sem dependências**: só Node.js 22.13+ (usa `node:sqlite` e `fetch` nativos).
+### Canais e integrações
+- **WhatsApp Cloud API**: cada cliente conecta o próprio número pelo **Cadastro Incorporado** da Meta (botão oficial). Não tem QR code nem automação de WhatsApp Web, que é o que leva a ban.
+- **Mercado Livre**: OAuth por cliente; tópicos `questions`, `messages`, `orders_v2`, `shipments`, `items`, `claims`. Responde perguntas e pós-venda, importa pedidos e anúncios e avisa reclamações.
+- **Omie**: importação de produtos **em massa** (página a página, respeitando o limite) ou **um por um**, além de estoque, pedido de venda e NF-e.
+- **Google Drive** (escopo `drive.file`): cria `Iris — Empresa/` com as subpastas (Notas Fiscais/ano/mês, Vendas, Funcionários, Financeiro, Produtos, Fornecedores, Contratos, Relatórios, Marketing) e a planilha **Iris — Gestão** com as abas Painel, Vendas (com comissão), Produtos (margem e reposição), Clientes, Funcionários, Folha de Pagamento (FGTS automático), Folgas e Férias, Contas a Pagar, Contas a Receber, Fluxo de Caixa e Fornecedores. Cada venda ou cliente novo vira uma linha, e o XML de cada NF-e é salvo na pasta.
+- **Claude**: Haiku nos planos básicos e Sonnet no Pro. Responde só com os dados do negócio, do catálogo e do anúncio.
+- **API pública + webhooks**: o sistema do lojista envia vendas, contatos, produtos e mensagens, e recebe eventos assinados com HMAC.
+- **Mercado Pago**: assinatura recorrente (preapproval), com webhook validado por `x-signature`.
 
-## Rodando localmente
+### Segurança
+- RLS em todas as tabelas. O painel **não consegue** alterar integrações, uso, plano ou status (isso só acontece no servidor).
+- Tokens de ML, Meta, Omie e Google ficam **criptografados** e só o servidor lê.
+- Webhooks validados (assinatura da Meta, `application_id` do ML e `x-signature` do MP). OAuth com `state` em cookie httpOnly.
+- Proteção contra SSRF nos webhooks de saída. Chave da API guardada só como hash. Limite de requisições na API.
+- A IA nunca promete reembolso, desconto ou troca, não passa contato no ML e ignora instruções escondidas na mensagem do cliente.
+
+## Estrutura de custo (começando grátis)
+
+| Peça | Serviço | Custo no começo |
+|---|---|---|
+| Painel | Vercel Hobby | grátis |
+| Banco + login | Supabase Free (500 MB) | grátis |
+| Worker (webhooks 24h) | Oracle Cloud Always Free (VM ARM) | grátis |
+| WhatsApp | Meta Cloud API | responder ao cliente dentro de 24h costuma ser grátis; confira a tabela da Meta |
+| Mercado Livre / Omie / Google | APIs | grátis |
+| IA | Claude API | ~US$ 0,0002 por resposta (Haiku); você embute no plano |
+| Pagamentos | Mercado Pago | só a taxa por cobrança |
+
+> O plano Hobby da Vercel é para uso não comercial. Quando começar a vender, passe para o Vercel Pro ou hospede o painel na mesma VM da Oracle.
+
+Passo a passo de instalação: **[docs/DEPLOY.md](docs/DEPLOY.md)** · Diagramas: **[docs/ARQUITETURA.md](docs/ARQUITETURA.md)**
+
+## Desenvolvimento
 
 ```bash
-cp .env.example .env                       # preencha as chaves
-cp data/negocio.exemplo.md data/negocio.md # escreva as informações da sua loja
-npm start                                  # http://localhost:3000/admin  (usuário: admin)
-npm test
+npm install                 # na raiz (workspaces)
+npm test                    # testes do worker (25 cenários)
+npm run dev:worker          # http://localhost:8080
+npm run dev:web             # http://localhost:3000
 ```
-
-Para testar os webhooks no seu PC, exponha a porta com um túnel HTTPS (ex.: `cloudflared tunnel --url http://localhost:3000`).
-
-## Configurando o Mercado Livre
-
-1. Crie um app em <https://developers.mercadolivre.com.br/devcenter>.
-2. **Redirect URI**: `https://SEU_DOMINIO/auth/ml/callback`
-3. **URL de notificações**: `https://SEU_DOMINIO/webhooks/mercadolivre`
-4. Tópicos: **questions** e **messages**.
-5. Coloque `ML_CLIENT_ID` e `ML_CLIENT_SECRET` no `.env` com `ML_ENABLED=true`.
-6. Entre no painel e clique em **conectar conta** (ou acesse `/auth/ml`).
-
-A API do Mercado Livre é gratuita.
-
-## Configurando o WhatsApp (Cloud API)
-
-1. Em <https://developers.facebook.com>, crie um app do tipo **Business** e adicione o produto **WhatsApp**.
-2. Copie o **Phone number ID** e gere um **token permanente** (usuário do sistema no Business Manager).
-3. Webhook: URL `https://SEU_DOMINIO/webhooks/whatsapp`. O token de verificação é o mesmo de `WA_VERIFY_TOKEN`. Assine o campo **messages**.
-4. Preencha `WA_*` no `.env` (inclusive `WA_APP_SECRET`, que valida a assinatura) com `WA_ENABLED=true`.
-
-> Respostas para quem te chamou nas últimas 24h são mensagens de serviço. Confira a tabela atual de preços da Meta.
-
-## Rotas
-
-| Rota | Para quê |
-|---|---|
-| `GET /health` | Verificação de que está no ar |
-| `GET/POST /webhooks/whatsapp` | Webhook da Meta |
-| `POST /webhooks/mercadolivre` | Notificações do ML |
-| `GET /auth/ml` | Conectar sua conta do ML (protegida por senha) |
-| `GET /admin` | Painel de aprovação (usuário `admin`, senha `ADMIN_PASSWORD`) |
-
-## Custo estimado (10 clientes/dia + poucas vendas)
-
-Cerca de 50 respostas/dia × ~3 mil tokens ≈ 4,5 milhões de tokens/mês:
-- **Haiku 5.5** (padrão): menos de US$ 1/mês
-- **Sonnet 5.5** (`CLAUDE_MODEL=claude-sonnet-5-5`): ~US$ 10/mês
-
-## Hospedagem
-
-Qualquer serviço que rode Node 22 com HTTPS e disco persistente para o `data/` (VPS, Railway, Render com disco, Fly.io).
-Hospedagem compartilhada só de PHP não serve.
-
-## Estrutura
-
-```
-src/
-  server.js              rotas HTTP
-  worker.js              processa a fila
-  claude.js              prompt e chamada ao Claude
-  policy.js              regras: enviar sozinho ou pedir aprovação
-  sender.js              entrega no canal certo
-  admin.js               painel
-  db.js                  SQLite (fila, histórico, rascunhos, tokens)
-  channels/whatsapp.js
-  channels/mercadolivre.js
-data/negocio.exemplo.md  base de conhecimento da loja
-```
-
-## Próximos passos
-
-- [ ] Testar com a conta real do ML (o pós-venda usa a nova arquitetura de mensageria com "agente")
-- [ ] Transcrever áudios do WhatsApp
-- [ ] Aviso no seu celular quando houver resposta para aprovar
-- [ ] Ligar o modo auto depois de 1 a 2 semanas aprovando respostas

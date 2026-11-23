@@ -1,0 +1,34 @@
+sequenceDiagram
+  autonumber
+  participant C as Cliente (WhatsApp/ML)
+  participant P as Meta / Mercado Livre
+  participant W as Worker Iris
+  participant DB as Supabase
+  participant AI as Claude
+  participant L as Lojista (painel)
+
+  C->>P: envia mensagem / pergunta
+  P->>W: webhook (POST)
+  W-->>P: 200 OK em milissegundos
+  W->>DB: enfileira job (dedupe)
+  Note over W: worker pega o job (claim_job)
+  W->>DB: descobre a empresa pelo número / vendedor
+  W->>DB: salva contato (CRM), conversa e mensagem
+  W->>P: busca dados do anúncio (ML)
+  W->>DB: busca produtos parecidos (catálogo)
+  W->>DB: confere plano e limite do mês
+  W->>AI: prompt com regras + negócio + produtos + histórico
+  AI-->>W: {reply, confidence, needs_human}
+  alt modo auto e caso seguro
+    W->>P: envia resposta
+    P->>C: resposta da Iris
+  else sensível, baixa confiança ou modo sugestão
+    W->>DB: cria rascunho
+    DB-->>L: aparece em Conversas
+    L->>DB: aprova / edita
+    DB->>W: job outbound.send
+    W->>P: envia resposta
+    P->>C: resposta aprovada
+  end
+  W->>DB: contabiliza uso
+  W-->>L: webhook de saída (message.received)
