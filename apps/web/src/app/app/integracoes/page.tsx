@@ -2,6 +2,7 @@ import { requireOrg, hasFeature } from '@/lib/org';
 import { connectOmie, saveOmieNfe, disconnect, googleResync, generateApiKey, addWebhook, removeWebhook } from '../actions';
 import { ActionForm, SubmitButton } from '@/components/client';
 import { WhatsappConnect } from './whatsapp-connect';
+import { IconChat, IconCart, IconDrive, IconFactory } from '@/components/icons';
 
 const EVENTS = ['message.received', 'draft.created', 'contact.created', 'order.created', 'order.updated', 'claim.opened', 'invoice.order_created', 'invoice.attached'];
 
@@ -34,21 +35,21 @@ export default async function Integracoes() {
       <div className="grid grid-2">
         {/* WhatsApp */}
         <div className="box stack">
-          <div className="row spread"><strong>💬 WhatsApp Business (API oficial)</strong><Status i={by.whatsapp} /></div>
+          <div className="row spread"><strong className="section-title"><span className="icon-tile sm t-green"><IconChat size={18} /></span>WhatsApp Business (API oficial)</strong><Status i={by.whatsapp} /></div>
           <span className="small muted">Use um número que não esteja no app do WhatsApp do celular (ou migre o número). Conexão oficial da Meta: sem QR code e sem risco de ban por automação.</span>
           {on('whatsapp') ? <Disconnect provider="whatsapp" /> : <WhatsappConnect />}
         </div>
 
         {/* Mercado Livre */}
         <div className="box stack">
-          <div className="row spread"><strong>🛒 Mercado Livre</strong><Status i={by.mercadolivre} /></div>
+          <div className="row spread"><strong className="section-title"><span className="icon-tile sm t-yellow"><IconCart size={18} /></span>Mercado Livre</strong><Status i={by.mercadolivre} /></div>
           <span className="small muted">Perguntas, mensagens pós-venda, pedidos, envios, anúncios e reclamações.</span>
           {on('mercadolivre') ? <Disconnect provider="mercadolivre" /> : <a className="btn" href="/api/ml/connect">Entrar com a conta do Mercado Livre</a>}
         </div>
 
         {/* Google Drive */}
         <div className="box stack">
-          <div className="row spread"><strong>📊 Google Drive e Planilhas</strong><Status i={by.google} /></div>
+          <div className="row spread"><strong className="section-title"><span className="icon-tile sm t-blue"><IconDrive size={18} /></span>Google Drive e Planilhas</strong><Status i={by.google} /></div>
           <span className="small muted">Cria a pasta “Iris — {org.name}” com subpastas (Notas Fiscais, Vendas, Funcionários, Financeiro…) e a planilha de gestão completa: vendas, produtos, clientes, funcionários, folha de pagamento, folgas e férias, contas a pagar/receber e fluxo de caixa. A Iris só acessa os arquivos que ela mesma criar.</span>
           {on('google') ? (
             <div className="stack">
@@ -67,7 +68,7 @@ export default async function Integracoes() {
 
         {/* Omie */}
         <div className="box stack">
-          <div className="row spread"><strong>🏭 Omie (produtos e NF-e)</strong><Status i={by.omie} /></div>
+          <div className="row spread"><strong className="section-title"><span className="icon-tile sm t-orange"><IconFactory size={18} /></span>Omie (produtos e NF-e)</strong><Status i={by.omie} /></div>
           {!hasFeature(plan, 'omie') ? <span className="muted small">Disponível nos planos Starter e Pro.</span> : on('omie') ? (
             <>
               <ActionForm action={saveOmieNfe}>

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { requireOrg } from '@/lib/org';
 import { Nav } from './nav';
+import { IrisMark } from '@/components/icons';
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const { org, plan, user } = await requireOrg();
@@ -8,7 +9,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="shell">
       <aside className="sidebar">
-        <Link href="/app" className="brand"><span className="brand-dot" /> Iris</Link>
+        <Link href="/app" className="brand"><IrisMark /> Iris</Link>
         <Nav />
         <div className="sidebar-foot stack">
           <strong style={{ color: 'var(--iris-text)' }}>{org.name}</strong>

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { IrisMark } from '@/components/icons';
+import { TechBackground } from '@/components/background';
 
 export function EntrarForm() {
   const sb = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
@@ -37,8 +39,9 @@ export function EntrarForm() {
 
   return (
     <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 20 }}>
-      <form onSubmit={submit} className="box stack" style={{ width: '100%', maxWidth: 400 }}>
-        <span className="brand" style={{ padding: 0 }}><span className="brand-dot" /> Iris</span>
+      <TechBackground />
+      <form onSubmit={submit} className="box stack" style={{ width: '100%', maxWidth: 400, padding: 28, gap: 14, background: 'rgba(11,14,12,0.92)' }}>
+        <span className="brand"><IrisMark /> Iris</span>
         <h1 style={{ margin: 0, fontSize: 22 }}>{mode === 'cadastro' ? 'Crie sua conta grátis' : 'Entrar no painel'}</h1>
         {mode === 'cadastro' && <label>Nome da empresa<input name="company" required maxLength={80} /></label>}
         <label>E-mail<input name="email" type="email" required autoComplete="email" /></label>

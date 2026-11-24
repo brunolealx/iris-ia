@@ -49,7 +49,7 @@ export default async function Conversas() {
             </div>
           );
         })}
-        {!drafts?.length && <p className="muted">Nada para aprovar agora. ✨</p>}
+        {!drafts?.length && <p className="muted">Nada para aprovar agora.</p>}
       </div>
 
       <h2 style={{ fontSize: 16, marginTop: 28 }}>Últimas conversas</h2>
