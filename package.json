@@ -1,0 +1,13 @@
+{
+  "name": "iris-ia",
+  "private": true,
+  "description": "Iris — IA de atendimento e vendas (SaaS) para WhatsApp e Mercado Livre",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev:web": "npm run dev -w @iris/web",
+    "dev:worker": "npm run dev -w @iris/worker",
+    "build": "npm run build -w @iris/web",
+    "test": "npm test -w @iris/worker"
+  },
+  "engines": { "node": ">=22.13" }
+}

@@ -1,0 +1,87 @@
+erDiagram
+  plans ||--o{ organizations : "assinam"
+  organizations ||--o{ memberships : "tem"
+  organizations ||--o{ integrations : "conecta"
+  integrations ||--|| integration_secrets : "segredo cifrado"
+  organizations ||--o{ contacts : "CRM"
+  contacts ||--o{ conversations : "conversa"
+  conversations ||--o{ messages : "mensagens"
+  conversations ||--o{ drafts : "rascunhos"
+  organizations ||--o{ products : "catálogo"
+  organizations ||--o{ orders : "vendas"
+  contacts ||--o{ orders : "compra"
+  organizations ||--o{ jobs : "fila"
+  organizations ||--o{ webhook_endpoints : "webhooks"
+  webhook_endpoints ||--o{ webhook_deliveries : "entregas"
+  organizations ||--o{ usage_monthly : "uso"
+
+  plans {
+    text id PK
+    int price_cents
+    int ai_replies_month
+    text ai_model
+    text_arr features
+  }
+  organizations {
+    uuid id PK
+    text plan_id FK
+    text status
+    text knowledge
+    text mode_whatsapp
+    text mode_ml
+    text nfe_mode
+    text api_key_hash
+  }
+  integrations {
+    uuid id PK
+    text provider
+    text external_id
+    jsonb meta
+  }
+  contacts {
+    uuid id PK
+    text channel
+    text stage
+    text_arr tags
+    bigint value_cents
+  }
+  conversations {
+    uuid id PK
+    text kind
+    bool ai_paused
+    text external_ref
+  }
+  messages {
+    uuid id PK
+    text direction
+    text author
+    text text
+  }
+  drafts {
+    uuid id PK
+    jsonb target
+    text reply
+    text status
+  }
+  products {
+    uuid id PK
+    text source
+    text sku
+    bigint price_cents
+    numeric stock
+  }
+  orders {
+    uuid id PK
+    text source
+    text status
+    text logistic_type
+    text nfe_status
+    text nfe_key
+  }
+  jobs {
+    bigint id PK
+    text kind
+    jsonb payload
+    text status
+    int attempts
+  }
