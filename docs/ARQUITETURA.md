@@ -6,7 +6,7 @@ Os arquivos `.mmd` em `docs/diagramas/` são a fonte dos diagramas (Mermaid, que
 
 ![Arquitetura](diagramas/arquitetura.png)
 
-- **Painel (apps/web)**: Next.js + Astryx. Fala com o Supabase usando a sessão do usuário (RLS). Faz os logins OAuth (Mercado Livre, Google, Meta) e o checkout do Mercado Pago.
+- **Painel (apps/web)**: Next.js 16 + Tailwind CSS 4. Fala com o Supabase usando a sessão do usuário (RLS). Faz os logins OAuth (Mercado Livre, Google, Meta) e o checkout do Mercado Pago.
 - **Worker (apps/worker)**: recebe todos os webhooks, responde 200 na hora e processa pela fila (`jobs` + `claim_job()` com `FOR UPDATE SKIP LOCKED`, que permite vários workers).
 - **Supabase**: banco, login e RLS. A service_role fica só no worker e nas rotas de servidor.
 

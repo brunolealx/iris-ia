@@ -47,7 +47,6 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ## 4. Painel (Vercel)
 1. Importe o repositório na Vercel com **Root Directory** = `apps/web`.
 2. Preencha as variáveis de `apps/web/.env.example`.
-3. Na VM ou no seu PC, rode uma vez `npm run astryx -- init` dentro de `apps/web`. Isso confere o Astryx e gera o guia dos componentes.
 
 ## 5. Meta (WhatsApp Cloud API + Cadastro Incorporado)
 1. developers.facebook.com → crie um app **Business** → adicione **WhatsApp**.
