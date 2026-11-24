@@ -7,7 +7,8 @@ export class DbError extends Error {}
 function headers(prefer) {
   return {
     apikey: config.supabaseKey,
-    authorization: `Bearer ${config.supabaseKey}`,
+    // chaves novas (sb_secret_…) vão só no apikey; a legada service_role (JWT) também no Authorization
+    ...(config.supabaseKey.startsWith('eyJ') ? { authorization: `Bearer ${config.supabaseKey}` } : {}),
     'content-type': 'application/json',
     ...(prefer ? { prefer } : {}),
   };
