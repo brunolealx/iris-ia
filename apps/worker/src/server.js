@@ -34,11 +34,39 @@ const send = (res, status, body = '') => {
 /** Executa depois de responder: erros só vão para o log. */
 const later = (fn) => setImmediate(() => fn().catch((e) => log('erro ao enfileirar:', e.message)));
 
+// Diagnóstico simples (em memória) para depurar a integração sem abrir os logs
+const stats = { started: new Date().toISOString(), waPosts: 0, waSigFail: 0, waLastPost: null, waLastSigFail: null, waLastMessages: 0 };
+const isAdmin = (url) => Boolean(config.meta.verifyToken) && url.searchParams.get('key') === config.meta.verifyToken;
+
 export async function handle(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const p = url.pathname;
 
   if (p === '/' || p === '/health') return send(res, 200, 'Iris worker ok');
+
+  // ---------- Administração (protegida pelo WA_VERIFY_TOKEN) ----------
+  if (p === '/admin/status' && req.method === 'GET') {
+    if (!isAdmin(url)) return send(res, 403, 'chave inválida');
+    return send(res, 200, JSON.stringify({ ...stats, metaSecret: Boolean(config.meta.appSecret), claudeKey: Boolean(config.anthropicKey), publicUrl: config.publicUrl || null }, null, 2));
+  }
+  // Assina o campo "messages" do webhook do WhatsApp no app da Meta, sem precisar achar a tela no painel.
+  if (p === '/admin/meta-subscribe' && req.method === 'GET') {
+    if (!isAdmin(url)) return send(res, 403, 'chave inválida');
+    const appId = (url.searchParams.get('app_id') || '').replace(/\D/g, '');
+    if (!appId || !config.meta.appSecret || !config.publicUrl) return send(res, 400, 'faltam app_id, META_APP_SECRET ou PUBLIC_URL');
+    const body = new URLSearchParams({
+      object: 'whatsapp_business_account',
+      callback_url: `${config.publicUrl}/webhooks/whatsapp`,
+      verify_token: config.meta.verifyToken,
+      fields: 'messages',
+      include_values: 'true',
+      access_token: `${appId}|${config.meta.appSecret}`,
+    });
+    const r = await fetch(`https://graph.facebook.com/${config.meta.graphVersion}/${appId}/subscriptions`, { method: 'POST', body });
+    const out = await r.text();
+    const check = await fetch(`https://graph.facebook.com/${config.meta.graphVersion}/${appId}/subscriptions?access_token=${encodeURIComponent(`${appId}|${config.meta.appSecret}`)}`).then((x) => x.text()).catch(() => '');
+    return send(res, r.ok ? 200 : 400, `assinatura: ${out}\n\natual: ${check}`);
+  }
 
   // ---------- WhatsApp (Meta) ----------
   if (p === '/webhooks/whatsapp') {
@@ -48,10 +76,18 @@ export async function handle(req, res) {
     }
     if (req.method === 'POST') {
       const raw = await readBody(req);
-      if (!wa.verifySignature(raw, req.headers['x-hub-signature-256'])) return send(res, 401, 'assinatura inválida');
+      stats.waPosts++;
+      stats.waLastPost = new Date().toISOString();
+      if (!wa.verifySignature(raw, req.headers['x-hub-signature-256'])) {
+        stats.waSigFail++;
+        stats.waLastSigFail = stats.waLastPost;
+        log('webhook WhatsApp recusado: assinatura inválida (confira META_APP_SECRET)');
+        return send(res, 401, 'assinatura inválida');
+      }
       send(res, 200, 'ok');
       later(async () => {
         const { messages } = wa.parseWebhook(JSON.parse(raw));
+        stats.waLastMessages = messages.length;
         for (const m of messages) await enqueue('wa.message', null, m, `wa:${m.id}`);
       });
       return;
