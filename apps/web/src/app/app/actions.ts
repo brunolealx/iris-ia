@@ -145,6 +145,39 @@ export async function saveProduct(_: any, f: FormData): Promise<Result> {
 
 // ---------------- Integrações ----------------
 
+// ---------------- WhatsApp: conexão manual (número de teste da Meta ou token de usuário do sistema) ----------------
+
+export async function connectWhatsappManual(_: any, f: FormData): Promise<Result> {
+  const { org, role } = await requireOrg();
+  if (role === 'agent') return fail('Só o dono ou um administrador pode conectar o WhatsApp.');
+  const phoneId = str(f, 'phone_number_id', 30).replace(/\D/g, '');
+  const wabaId = str(f, 'waba_id', 30).replace(/\D/g, '');
+  const token = str(f, 'token', 1000).replace(/\s/g, '');
+  if (!phoneId || !wabaId || token.length < 20) return fail('Preencha o ID do número, o ID da conta e o token.');
+  const G = `https://graph.facebook.com/${process.env.WA_GRAPH_VERSION || 'v21.0'}`;
+  const call = async (path: string, init: RequestInit = {}) => {
+    const r = await fetch(`${G}/${path}`, { ...init, headers: { authorization: `Bearer ${token}`, 'content-type': 'application/json' } });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d?.error?.message || `Meta ${r.status}`);
+    return d;
+  };
+  try {
+    const info = await call(`${phoneId}?fields=display_phone_number,verified_name`);
+    const { data: other } = await supabaseAdmin().from('integrations').select('org_id').eq('provider', 'whatsapp').eq('external_id', phoneId).neq('org_id', org.id).maybeSingle();
+    if (other) return fail('Este número já está conectado em outra conta.');
+    // garante que o app recebe os webhooks desta conta do WhatsApp Business
+    await call(`${wabaId}/subscribed_apps`, { method: 'POST' });
+    await saveIntegration(org.id, 'whatsapp', {
+      external_id: phoneId, display_name: info.display_phone_number || phoneId,
+      meta: { waba_id: wabaId, verified_name: info.verified_name, manual: true },
+    }, { access_token: token, waba_id: wabaId });
+    revalidatePath('/app/integracoes');
+    return ok(`WhatsApp ${info.display_phone_number || ''} conectado. Mande um "oi" para ele do seu celular.`);
+  } catch (e: any) {
+    return fail(/expired|Session has expired/i.test(e.message) ? 'O token expirou. Gere um novo na Meta (o temporário dura 24 horas).' : `A Meta recusou: ${e.message}`);
+  }
+}
+
 // ---------------- NFS-e Nacional (notas de serviço) ----------------
 
 const digits = (v: string) => v.replace(/\D/g, '');

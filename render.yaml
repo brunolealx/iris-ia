@@ -1,0 +1,32 @@
+# Worker da Iris no Render (plano grátis): webhooks do WhatsApp, Mercado Livre e
+# Mercado Pago, fila de jobs e IA. No plano grátis o serviço dorme após ~15 min sem
+# acesso e acorda na próxima mensagem (a primeira resposta demora uns 30–60 s).
+# Os segredos (sync: false) são preenchidos no painel do Render, nunca aqui.
+services:
+  - type: web
+    name: iris-worker
+    runtime: node
+    plan: free
+    region: virginia
+    rootDir: .
+    buildCommand: npm install --workspace @iris/worker --include-workspace-root=false
+    startCommand: npm start --workspace @iris/worker
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: SUPABASE_URL
+        value: https://wrnrfdlcrnakyzqzhebp.supabase.co
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: ENCRYPTION_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: META_APP_SECRET
+        sync: false
+      - key: WA_VERIFY_TOKEN
+        sync: false
+      - key: PUBLIC_URL
+        sync: false

@@ -1,5 +1,5 @@
 import { requireOrg, hasFeature } from '@/lib/org';
-import { saveNfse, disconnect, googleResync, generateApiKey, addWebhook, removeWebhook } from '../actions';
+import { saveNfse, connectWhatsappManual, disconnect, googleResync, generateApiKey, addWebhook, removeWebhook } from '../actions';
 import { ActionForm, SubmitButton } from '@/components/client';
 import { WhatsappConnect } from './whatsapp-connect';
 import { IconChat, IconCart, IconDrive, IconInvoice } from '@/components/icons';
@@ -38,7 +38,21 @@ export default async function Integracoes() {
         <div className="box stack">
           <div className="row spread"><strong className="section-title"><span className="icon-tile sm t-green"><IconChat size={18} /></span>WhatsApp Business (API oficial)</strong><Status i={by.whatsapp} /></div>
           <span className="small muted">Use um número que não esteja no app do WhatsApp do celular (ou migre o número). Conexão oficial da Meta: sem QR code e sem risco de ban por automação.</span>
-          {on('whatsapp') ? <Disconnect provider="whatsapp" /> : <WhatsappConnect />}
+          {on('whatsapp') ? <Disconnect provider="whatsapp" /> : (
+            <>
+              {process.env.NEXT_PUBLIC_META_APP_ID && <WhatsappConnect />}
+              <details open={!process.env.NEXT_PUBLIC_META_APP_ID}>
+                <summary className="small">Conectar manualmente (número de teste da Meta)</summary>
+                <ActionForm action={connectWhatsappManual} className="stack mt-2">
+                  <span className="small muted">Em developers.facebook.com → seu app → WhatsApp → Configuração da API.</span>
+                  <label>ID do número de telefone<input name="phone_number_id" required inputMode="numeric" autoComplete="off" /></label>
+                  <label>ID da conta do WhatsApp Business<input name="waba_id" required inputMode="numeric" autoComplete="off" /></label>
+                  <label>Token de acesso<input name="token" type="password" required autoComplete="off" /></label>
+                  <div><SubmitButton pendingText="Conferindo na Meta…">Conectar</SubmitButton></div>
+                </ActionForm>
+              </details>
+            </>
+          )}
         </div>
 
         {/* Mercado Livre */}
