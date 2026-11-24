@@ -2,7 +2,7 @@
 
 ## 1. Supabase (banco + login)
 1. Crie um projeto em supabase.com (plano Free, região São Paulo).
-2. Em **SQL Editor**, cole e rode `supabase/migrations/0001_iris.sql`.
+2. Em **SQL Editor**, cole e rode `supabase/migrations/0001_iris.sql` e depois `0002_grants.sql`.
 3. **Authentication → Providers**: deixe E-mail ligado. Para "Continuar com Google", ligue o Google também.
 4. **Authentication → URL Configuration**: Site URL = URL do painel; adicione `https://SEU_PAINEL/auth/callback`.
 5. Crie sua conta pelo painel e, no SQL Editor, torne-se admin da plataforma:
