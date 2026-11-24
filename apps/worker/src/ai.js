@@ -60,6 +60,7 @@ export async function productContext(orgId, text) {
  * @throws {AiBlocked} quando o plano não permite (limite, teste vencido...)
  */
 export async function generateReply({ org, plan, channel, context = '', history = [], customerText }) {
+  if (!config.anthropicKey) throw new AiBlocked('chave da Claude API não configurada — responda pelo painel');
   const used = (await db.one('usage_monthly', { org_id: `eq.${org.id}`, month: `eq.${new Date().toISOString().slice(0, 7)}-01`, select: 'ai_replies' }))?.ai_replies || 0;
   const blocked = aiBlockReason(org, plan, used);
   if (blocked) throw new AiBlocked(blocked);
