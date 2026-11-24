@@ -76,3 +76,6 @@ create policy jobs_insert on public.jobs for insert with check (
   and kind in ('outbound.send','nfe.process','google.setup','google.export')
   and dedupe_key is null
 );
+
+-- ---------- IA: todos os planos com Claude Haiku 5.5 (custo baixo por resposta) ----------
+update public.plans set ai_model = 'claude-haiku-5-5' where ai_model <> 'claude-haiku-5-5';

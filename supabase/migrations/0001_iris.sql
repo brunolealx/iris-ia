@@ -24,7 +24,7 @@ create table public.plans (
 insert into public.plans (id, name, price_cents, ai_replies_month, products_max, users_max, channels, ai_model, features, sort) values
   ('gratis',  'Teste grátis', 0,     100,  50,    1, '{whatsapp,mercadolivre}', 'claude-haiku-5-5',  '{crm,sheets}', 0),
   ('starter', 'Starter',      9700,  1500, 1000,  2, '{whatsapp,mercadolivre}', 'claude-haiku-5-5',  '{crm,sheets}', 1),
-  ('pro',     'Pro',          19700, 6000, 20000, 5, '{whatsapp,mercadolivre}', 'claude-sonnet-5-5', '{crm,sheets,api,webhooks,nfe,nfse}', 2);
+  ('pro',     'Pro',          19700, 6000, 20000, 5, '{whatsapp,mercadolivre}', 'claude-haiku-5-5' , '{crm,sheets,api,webhooks,nfe,nfse}', 2);
 
 -- ---------- Organizações e membros ----------
 create table public.organizations (
