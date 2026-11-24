@@ -38,17 +38,17 @@ export function EntrarForm() {
   }
 
   return (
-    <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 20 }}>
+    <main className="grid min-h-dvh place-items-center p-5">
       <TechBackground />
-      <form onSubmit={submit} className="box stack" style={{ width: '100%', maxWidth: 400, padding: 28, gap: 14, background: 'rgba(11,14,12,0.92)' }}>
+      <form onSubmit={submit} className="box flex w-full max-w-[400px] flex-col gap-3.5 bg-surface/92 p-7">
         <span className="brand"><IrisMark /> Iris</span>
-        <h1 style={{ margin: 0, fontSize: 22 }}>{mode === 'cadastro' ? 'Crie sua conta grátis' : 'Entrar no painel'}</h1>
+        <h1 className="m-0 text-[22px]">{mode === 'cadastro' ? 'Crie sua conta grátis' : 'Entrar no painel'}</h1>
         {mode === 'cadastro' && <label>Nome da empresa<input name="company" required maxLength={80} /></label>}
         <label>E-mail<input name="email" type="email" required autoComplete="email" /></label>
         <label>Senha<input name="password" type="password" required minLength={8} autoComplete={mode === 'cadastro' ? 'new-password' : 'current-password'} /></label>
         <button className="btn" disabled={busy}>{busy ? 'Aguarde…' : mode === 'cadastro' ? 'Criar conta' : 'Entrar'}</button>
         <button type="button" className="btn ghost" onClick={google}>Continuar com Google</button>
-        {msg && <p className="small" style={{ color: 'var(--iris-green)' }}>{msg}</p>}
+        {msg && <p className="small text-iris">{msg}</p>}
         <p className="small muted">
           {mode === 'cadastro' ? 'Já tem conta? ' : 'Ainda não tem conta? '}
           <a href="#" onClick={(e) => { e.preventDefault(); setMode(mode === 'cadastro' ? 'entrar' : 'cadastro'); }}>

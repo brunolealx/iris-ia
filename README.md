@@ -8,7 +8,7 @@ A Iris atende os clientes da loja no **WhatsApp** (API oficial da Meta) e no **M
 
 | Módulo | O que faz | Onde está |
 |---|---|---|
-| **Painel** | Landing com planos, cadastro/login, início, conversas (aprovar respostas), CRM (funil), vendas e NF-e, notas de serviço (NFS-e), produtos, IA, integrações, assinatura | `apps/web` (Next.js 15 + React 19 + **Astryx** da Meta, tema preto e verde) |
+| **Painel** | Landing com planos, cadastro/login, início, conversas (aprovar respostas), CRM (funil), vendas e NF-e, notas de serviço (NFS-e), produtos, IA, integrações, assinatura | `apps/web` (Next.js 16 + React 19.2 + **Tailwind CSS 4**, tema preto e verde) |
 | **Admin da plataforma** | Todos os clientes, MRR, uso da IA, trocar plano/status | `apps/web/src/app/admin` |
 | **Worker** | Webhooks (Meta, ML, Mercado Pago), fila, IA, envios, NF-e (Faturador do ML), NFS-e Nacional, Google, API pública, webhooks de saída | `apps/worker` (Node 22, **sem dependências**) |
 | **Banco** | Multiempresa com RLS, segredos criptografados (AES-256-GCM), fila, uso mensal | `supabase/migrations/0001_iris.sql` |

@@ -1,8 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 
-// Renova a sessão do Supabase e protege /app e /admin.
-export async function middleware(req: NextRequest) {
+// Next 16: "proxy" substitui o antigo middleware. Renova a sessão do Supabase e protege /app e /admin.
+export async function proxy(req: NextRequest) {
   let res = NextResponse.next({ request: req });
   const sb = createServerClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     cookies: {
