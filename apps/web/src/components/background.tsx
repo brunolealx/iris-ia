@@ -313,8 +313,16 @@ export function TechBackground() {
       iris = renderIris(Math.round(irisR * 2));
     };
 
-    let tx = 0, ty = 0, x = 0, y = 0, last = -1e9, raf = 0;
+    // ===== Movimento natural =====
+    // x, y: direção do olhar (-1..1). Sacadas rápidas entre pontos de fixação,
+    // perseguição suave em movimentos pequenos, microssacadas e piscadas.
+    let x = 0, y = 0, raf = 0, lidClose = 0;
+    let goalX = 0, goalY = 0, lastMouse = -1e9;
+    let sacFromX = 0, sacFromY = 0, sacToX = 0, sacToY = 0, sacStart = -1, sacDur = 0, sacEnd = 0;
+    let microX = 0, microY = 0, nextMicro = 0, nextIdle = 0;
+    let blinkStart = -1, nextBlink = performance.now() + 2500 + Math.random() * 3000;
     const t0 = performance.now();
+    const rnd = Math.random;
     const draw = (t: number) => {
       if (!W || !surround || !iris) return;
       ctx.clearRect(0, 0, W, H);
@@ -370,6 +378,31 @@ export function TechBackground() {
       ctx.beginPath();
       ctx.ellipse(hx, hy, irisR * 0.2, irisR * 0.13, -0.5, 0, Math.PI * 2);
       ctx.fill();
+      // piscada: a pálpebra superior desce até a inferior
+      if (lidClose > 0.001) {
+        const L = (u: number, l: number) => u + (l - u) * Math.min(1, lidClose * 1.02);
+        const lx0 = 0.08 * W, ly0 = 0.53 * H, lx3 = 0.93 * W, ly3 = 0.47 * H;
+        const c1x = L(0.24, 0.3) * W, c1y = L(0.18, 0.92) * H, c2x = L(0.66, 0.72) * W, c2y = L(0.08, 0.86) * H;
+        ctx.filter = `blur(${Math.max(4, W / 170)}px)`;
+        const skinLid = ctx.createLinearGradient(0, 0.05 * H, 0, 0.9 * H);
+        skinLid.addColorStop(0, '#1c120c');
+        skinLid.addColorStop(1, '#33211a');
+        ctx.fillStyle = skinLid;
+        ctx.beginPath();
+        ctx.moveTo(lx0, ly0);
+        ctx.bezierCurveTo(0.24 * W, 0.18 * H, 0.66 * W, 0.08 * H, lx3, ly3);
+        ctx.bezierCurveTo(c2x, c2y, c1x, c1y, lx0, ly0);
+        ctx.closePath();
+        ctx.fill();
+        // linha dos cílios na borda da pálpebra
+        ctx.strokeStyle = 'rgba(8,5,3,0.85)';
+        ctx.lineWidth = Math.max(3, W / 220);
+        ctx.beginPath();
+        ctx.moveTo(lx0, ly0);
+        ctx.bezierCurveTo(c1x, c1y, c2x, c2y, lx3, ly3);
+        ctx.stroke();
+        ctx.filter = 'none';
+      }
       ctx.restore();
     };
 
@@ -377,18 +410,74 @@ export function TechBackground() {
       const r = canvas.getBoundingClientRect();
       const dx = (e.clientX - (r.left + r.width * 0.515)) / (window.innerWidth * 0.5);
       const dy = (e.clientY - (r.top + r.height * 0.5)) / (window.innerHeight * 0.5);
-      tx = Math.max(-1, Math.min(1, dx));
-      ty = Math.max(-1, Math.min(1, dy));
-      last = performance.now();
+      goalX = Math.max(-1, Math.min(1, dx));
+      goalY = Math.max(-1, Math.min(1, dy));
+      lastMouse = performance.now();
     };
+
+    const startSaccade = (t: number, toX: number, toY: number) => {
+      const dist = Math.hypot(toX - x, toY - y);
+      sacFromX = x; sacFromY = y; sacToX = toX; sacToY = toY;
+      sacStart = t;
+      sacDur = 45 + dist * 110; // sacadas maiores demoram um pouco mais (45–200 ms)
+      // às vezes pisca junto com um movimento grande, como as pessoas fazem
+      if (dist > 0.7 && rnd() < 0.3 && blinkStart < 0) blinkStart = t + sacDur * 0.2;
+    };
+
     const loop = (t: number) => {
-      if (t - last > 4000) {
-        tx = Math.sin(t / 3100) * 0.55;
-        ty = Math.sin(t / 4300 + 1) * 0.35;
+      const mouseActive = t - lastMouse < 3500;
+
+      // 1) escolhe para onde olhar
+      if (!mouseActive && t > nextIdle && sacStart < 0) {
+        // sem mouse: fixa em pontos ao acaso, quase sempre perto do centro
+        const far = rnd() < 0.25;
+        goalX = (rnd() * 2 - 1) * (far ? 0.85 : 0.4);
+        goalY = (rnd() * 2 - 1) * (far ? 0.6 : 0.25);
+        nextIdle = t + 900 + rnd() * 2200;
       }
-      x += (tx - x) * 0.09;
-      y += (ty - y) * 0.09;
+
+      // 2) sacada (salto rápido) ou perseguição suave
+      if (sacStart >= 0) {
+        const p = Math.min(1, (t - sacStart) / sacDur);
+        // sai rápido, freia no fim e passa só um pouquinho do ponto (como o olho real)
+        const e = 1 + 1.08 * Math.pow(p - 1, 3) + 0.08 * Math.pow(p - 1, 2);
+        x = sacFromX + (sacToX - sacFromX) * e;
+        y = sacFromY + (sacToY - sacFromY) * e;
+        if (p >= 1) { x = sacToX; y = sacToY; sacStart = -1; sacEnd = t; }
+      } else {
+        const d = Math.hypot(goalX - x, goalY - y);
+        if (d > 0.09 && t - sacEnd > 110) startSaccade(t, goalX, goalY);
+        else { x += (goalX - x) * 0.06; y += (goalY - y) * 0.06; } // perseguição lenta
+      }
+
+      // 3) microssacadas: tremidinhas mínimas durante a fixação
+      if (t > nextMicro) {
+        microX = (rnd() - 0.5) * 0.018;
+        microY = (rnd() - 0.5) * 0.018;
+        nextMicro = t + 350 + rnd() * 900;
+      }
+
+      // 4) piscada: fecha em ~80 ms, fica 40 ms, abre em ~140 ms
+      if (blinkStart < 0 && t > nextBlink) blinkStart = t;
+      if (blinkStart >= 0 && t >= blinkStart) {
+        const bt = t - blinkStart;
+        lidClose = bt < 80 ? bt / 80 : bt < 120 ? 1 : bt < 260 ? 1 - (bt - 120) / 140 : 0;
+        if (bt >= 260) {
+          lidClose = 0;
+          blinkStart = -1;
+          // às vezes duas piscadas seguidas
+          nextBlink = t + (rnd() < 0.15 ? 180 : 2800 + rnd() * 4200);
+        }
+      }
+
+      // a pálpebra acompanha o olhar: olhando para baixo, ela desce um pouco
+      const blink = lidClose;
+      lidClose = Math.max(blink, Math.max(0, y) * 0.07);
+      const gx = x, gy = y;
+      x = gx + microX; y = gy + microY;
       draw(t);
+      lidClose = blink;
+      x = gx; y = gy;
       raf = requestAnimationFrame(loop);
     };
 
