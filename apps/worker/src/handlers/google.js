@@ -83,8 +83,8 @@ export async function appendRow({ kind, id: rowId }, job) {
   }
 }
 
-/** Guarda o XML da NF-e em Notas Fiscais/<ano>/<mês>. Ignora se o Drive não estiver conectado. */
-export async function saveInvoiceToDrive(orgId, { key, xml, orderExternalId }) {
+/** Guarda o XML da nota em Notas Fiscais/<ano>/<mês>. Ignora se o Drive não estiver conectado. */
+export async function saveInvoiceToDrive(orgId, { key, xml, orderExternalId, kind = 'NF-e' }) {
   const integ = await integrationOf(orgId, 'google');
   const base = integ?.meta?.folders?.['Notas Fiscais'];
   if (!integ || integ.status !== 'connected' || !base) return null;
@@ -94,5 +94,5 @@ export async function saveInvoiceToDrive(orgId, { key, xml, orderExternalId }) {
   const month = now.toLocaleDateString('pt-BR', { month: '2-digit' }) + ' - ' + now.toLocaleDateString('pt-BR', { month: 'long' });
   const yearId = (await g.findChild(base, year))?.id || (await g.createFolder(year, base)).id;
   const monthId = (await g.findChild(yearId, month))?.id || (await g.createFolder(month, yearId)).id;
-  return g.upload(monthId, `NF-e ${key || orderExternalId}.xml`, 'text/xml', xml);
+  return g.upload(monthId, `${kind} ${key || orderExternalId}.xml`, 'text/xml', xml);
 }

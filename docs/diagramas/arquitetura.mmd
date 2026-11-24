@@ -23,7 +23,7 @@ flowchart LR
     META["Meta WhatsApp<br/>Cloud API"]:::ext
     ML["API Mercado Livre"]:::ext
     CLAUDE["Claude API<br/>Haiku / Sonnet"]:::ext
-    OMIE["Omie ERP<br/>produtos · NF-e"]:::ext
+    NFSE["Sefin Nacional<br/>NFS-e (gov.br) · mTLS"]:::ext
     GOOGLE["Google Drive<br/>e Planilhas"]:::ext
     MP["Mercado Pago<br/>assinaturas"]:::ext
   end
@@ -42,6 +42,6 @@ flowchart LR
   WORKER --> CLAUDE
   WORKER -->|respostas| META
   WORKER -->|respostas, NF-e| ML
-  WORKER <-->|produtos, pedidos, NF-e| OMIE
+  WORKER <-->|DPS assinada, NFS-e| NFSE
   WORKER -->|pastas, planilha, XML| GOOGLE
   WEB -->|checkout| MP

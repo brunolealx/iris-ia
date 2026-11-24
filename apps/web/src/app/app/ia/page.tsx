@@ -39,14 +39,14 @@ export default async function Ia() {
         </div>
 
         <div className="box stack" style={{ marginTop: 14 }}>
-          <strong>Nota fiscal automática (vendas do Mercado Livre)</strong>
+          <strong>Nota fiscal das vendas do Mercado Livre (NF-e)</strong>
           {hasFeature(plan, 'nfe') ? (
             <label>
               Modo
               <select name="nfe_mode" defaultValue={org.nfe_mode}>
                 <option value="off">Desligado</option>
-                <option value="order_only">Criar o pedido na Omie (eu faturo lá)</option>
-                <option value="auto">Automático: pedido → faturar → anexar XML no ML e salvar no Drive</option>
+                <option value="manual">Manual: eu clico em "Emitir nota" em cada venda</option>
+                <option value="auto">Automático: emite pelo Faturador do ML quando a venda é paga</option>
               </select>
             </label>
           ) : (
@@ -55,7 +55,7 @@ export default async function Ia() {
               <span className="small muted">Disponível no plano Pro.</span>
             </>
           )}
-          <span className="small muted">Requisitos: Omie conectada com categoria e conta corrente configuradas, e o mesmo SKU no anúncio do ML e no produto da Omie. No Mercado Envios Full quem emite é o próprio ML.</span>
+          <span className="small muted">A nota sai pelo Faturador do Mercado Livre, que já vincula a NF-e à venda. Antes, ative o Faturador na sua conta do ML (certificado A1 e dados da SEFAZ) e preencha os dados fiscais de cada anúncio (NCM, origem). A Iris acompanha a autorização e salva o XML no seu Google Drive. No Mercado Envios Full o ML emite sozinho e a Iris só busca a nota.</span>
         </div>
 
         <div style={{ marginTop: 14 }}><SubmitButton>Salvar</SubmitButton></div>

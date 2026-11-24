@@ -1,4 +1,4 @@
-// Criptografia dos segredos das integrações (tokens do ML, WhatsApp, Omie).
+// Criptografia dos segredos das integrações (tokens do ML, WhatsApp, Google e certificado da NFS-e).
 // AES-256-GCM com chave de 32 bytes em base64 (ENCRYPTION_KEY).
 // Gere uma chave com:  node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 import { createCipheriv, createDecipheriv, randomBytes, createHash, createHmac, timingSafeEqual } from 'node:crypto';

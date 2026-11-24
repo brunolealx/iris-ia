@@ -25,7 +25,17 @@ Regras de envio (`packages/shared/src/policy.js`). Vão **sempre para aprovaçã
 
 ![Venda e NF-e](diagramas/fluxo-venda-nfe.png)
 
-> **Confirme na documentação da Omie** os métodos de faturamento e XML (`FaturarPedidoVenda`, `ConsultarNF`, `ObterNfe`) e os campos obrigatórios da sua conta (categoria, conta corrente, cenário fiscal) antes de ligar o modo automático. O modo "só pedido" é o mais seguro para começar.
+A NF-e de produto sai pelo **Faturador do Mercado Livre**: `POST /users/{id}/invoices/orders` com os pedidos (um carrinho = uma nota), consulta em `GET /users/{id}/invoices/{invoice_id}` (ou pelo pedido, `/invoices/orders/{order_id}`) e XML em `xml_location`. O tópico `invoices` avisa quando muda o status. Pré-requisitos: Faturador ativado na conta (certificado A1 enviado ao ML) e dados fiscais nos anúncios. Comece no modo **manual**.
+
+### NFS-e Nacional (serviços)
+
+1. Painel cria a nota (`service_invoices`, status `pending`) e o servidor enfileira `nfse.emit`.
+2. Worker reserva o número da DPS, monta o XML na ordem do XSD (v1.01) e assina o `infDPS` (C14N, RSA-SHA256) com o certificado A1 convertido pelo `openssl`.
+3. Envia por mTLS: `POST {Sefin}/nfse` com `dpsXmlGZipB64`. Sucesso → chave de acesso e `nfseXmlGZipB64` (XML salvo no banco e no Drive).
+4. Reenvio seguro: antes de reenviar, `GET /dps/{id}` recupera a chave se a primeira tentativa chegou.
+5. Cancelamento: evento `e101101` assinado em `POST /nfse/{chave}/eventos`.
+
+Ambientes: produção restrita `sefin.producaorestrita.nfse.gov.br/SefinNacional`, produção `sefin.nfse.gov.br/SefinNacional`. O grupo IBS/CBS é opcional e configurável; **valide em produção restrita** com o seu contador antes de ligar produção.
 
 ## 4. Google Drive do cliente
 
@@ -44,8 +54,8 @@ Escopo `drive.file`: a Iris só acessa o que ela criou. A tela de consentimento 
 | `wa.message` | webhook Meta | CRM + IA + resposta/rascunho |
 | `ml.notification` | webhook ML | perguntas, mensagens, pedidos, envios, anúncios, reclamações |
 | `outbound.send` | painel / API | envia rascunho aprovado ou mensagem manual |
-| `omie.import` / `omie.stock` | painel | catálogo em massa ou um item / estoque |
-| `nfe.process` | venda paga | pedido Omie → faturar → XML → ML + Drive |
+| `nfe.process` | venda paga / botão | Faturador do ML → aguarda autorização → XML no Drive |
+| `nfse.emit` / `nfse.cancel` | painel (via servidor) | DPS assinada → Sefin Nacional / evento de cancelamento |
 | `google.setup` / `google.export` / `google.append` | OAuth / eventos | pastas, planilha e linhas novas |
 | `webhook.dispatch` | eventos | POST assinado para o sistema do cliente |
 | `mp.subscription` | webhook MP | ativa, pausa ou cancela o plano |

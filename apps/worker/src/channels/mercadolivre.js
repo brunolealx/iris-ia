@@ -32,7 +32,7 @@ export async function token(integration) {
 
 export function client(integration) {
   const sellerId = integration.external_id;
-  async function api(method, path, body, { form } = {}) {
+  async function api(method, path, body, { form, raw } = {}) {
     const t = await token(integration);
     const res = await fetch(`${API}${path}`, {
       method,
@@ -46,6 +46,7 @@ export function client(integration) {
       err.permanent = [400, 403, 404].includes(res.status);
       throw err;
     }
+    if (raw) return text;
     return text ? JSON.parse(text) : null;
   }
 
@@ -69,12 +70,15 @@ export function client(integration) {
       api('POST', `/messages/packs/${packId}/sellers/${sellerId}?tag=post_sale`, { from: { user_id: sellerId }, to: { user_id: String(toUserId) }, text: text.slice(0, 350) }),
     // Reclamações
     claim: (id) => api('GET', `/post-purchase/v1/claims/${id}`),
-    // Nota fiscal: anexa o XML (o ML gera o DANFE)
-    attachInvoiceXml(packId, xml, fileName = 'nfe.xml') {
-      const form = new FormData();
-      form.append('fiscal_document', new Blob([xml], { type: 'text/xml' }), fileName);
-      return api('POST', `/packs/${packId}/fiscal_documents`, null, { form });
-    },
+    // Nota fiscal pelo Faturador do Mercado Livre (NF-e de produto)
+    // Emite uma nota para uma venda (ou para todas as vendas de um carrinho do mesmo vendedor).
+    emitInvoice: (orderIds) => api('POST', `/users/${sellerId}/invoices/orders`, { orders: orderIds.map(Number) }),
+    invoice: (invoiceId) => api('GET', `/users/${sellerId}/invoices/${invoiceId}`),
+    invoiceByOrder: (orderId) => api('GET', `/users/${sellerId}/invoices/orders/${orderId}`).catch((e) => (e.status === 404 ? null : Promise.reject(e))),
+    /** XML autorizado. `path` é o xml_location devolvido pela nota. */
+    invoiceXml: (invoiceIdOrPath) =>
+      api('GET', String(invoiceIdOrPath).startsWith('/') ? invoiceIdOrPath : `/users/${sellerId}/invoices/documents/xml/${invoiceIdOrPath}/authorized`, null, { raw: true }),
+    invoiceError: (code) => api('GET', `/users/invoices/errors/MLB/${encodeURIComponent(code)}`).catch(() => null),
   };
 }
 
@@ -95,6 +99,3 @@ ${attrs || '(nenhuma)'}
 Descrição:
 ${(desc?.plain_text || '').slice(0, 3000) || '(sem descrição)'}`;
 }
-
-/** Tipos de logística em que o ML NÃO aceita anexar NF pelo /fiscal_documents. */
-export const NO_ATTACH_LOGISTICS = ['fulfillment', 'cross_docking', 'xd_drop_off', 'drop_off'];

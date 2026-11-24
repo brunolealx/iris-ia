@@ -12,8 +12,8 @@ export const revalidate = 300;
 const FEATURES = [
   { Icon: IconChat, tone: 't-green', title: 'WhatsApp oficial', text: 'Conexão pelo botão oficial da Meta. Sem QR code e sem automação de WhatsApp Web.' },
   { Icon: IconCart, tone: 't-yellow', title: 'Mercado Livre completo', text: 'Perguntas, mensagens pós-venda, pedidos, envios, anúncios e alertas de reclamação.' },
-  { Icon: IconCatalog, tone: 't-blue', title: 'IA que conhece seu catálogo', text: 'Importa produtos da Omie, CSV ou API e responde com preço e estoque reais.' },
-  { Icon: IconInvoice, tone: 't-orange', title: 'Nota fiscal automática', text: 'Venda no ML vira pedido na Omie, a NF-e é emitida e o XML vai para o anúncio e para o Drive.' },
+  { Icon: IconCatalog, tone: 't-blue', title: 'IA que conhece seu catálogo', text: 'Puxa os anúncios do Mercado Livre, planilha CSV ou API e responde com preço e estoque reais.' },
+  { Icon: IconInvoice, tone: 't-orange', title: 'Notas fiscais automáticas', text: 'NF-e das vendas pelo Faturador do Mercado Livre e NFS-e de serviços pela API oficial do governo, com o XML salvo no Drive.' },
   { Icon: IconSheet, tone: 't-cyan', title: 'Gestão no Google Drive', text: 'Pastas e planilha de vendas, clientes, funcionários, folha, folgas, contas e fluxo de caixa.' },
   { Icon: IconFunnel, tone: 't-pink', title: 'CRM com funil', text: 'Cada contato vira lead com histórico completo, do primeiro oi ao pós-venda.' },
   { Icon: IconApi, tone: 't-purple', title: 'API e webhooks', text: 'Seu sistema envia vendas e mensagens e recebe eventos assinados em tempo real.' },
@@ -44,7 +44,7 @@ export default async function Landing() {
           <span className="eyebrow"><b>Novo</b> Atendimento com IA para lojistas</span>
           <h1>Sua loja vendendo <span>24 horas</span> no WhatsApp e no Mercado Livre</h1>
           <p className="lead">
-            A Iris responde seus clientes, organiza as vendas no CRM, emite nota fiscal pela Omie e mantém tudo em planilhas no seu Google Drive.
+            A Iris responde seus clientes, organiza as vendas no CRM, emite as notas fiscais e mantém tudo em planilhas no seu Google Drive.
           </p>
           <div className="row" style={{ gap: 12 }}>
             <Link className="btn lg" href="/entrar?cadastro=1">Testar grátis por 14 dias <IconArrow /></Link>
@@ -85,7 +85,7 @@ export default async function Landing() {
           </div>
           <div className="preview-foot">
             <span className="badge ok">Respondido pela IA</span>
-            <span className="badge">Estoque consultado na Omie</span>
+            <span className="badge">Estoque consultado no catálogo</span>
           </div>
         </div>
       </section>
@@ -130,8 +130,8 @@ export default async function Landing() {
                   <li><IconCheck /> <span>Até <b className="num">{p.products_max.toLocaleString('pt-BR')}</b> produtos</span></li>
                   <li><IconCheck /> {p.users_max} {p.users_max > 1 ? 'usuários' : 'usuário'}</li>
                   <li><IconCheck /> CRM e planilhas no Google Drive</li>
-                  {p.features.includes('omie') && <li><IconCheck /> Importação da Omie</li>}
-                  {p.features.includes('nfe') && <li><IconCheck /> Nota fiscal automática</li>}
+                  {p.features.includes('nfe') && <li><IconCheck /> NF-e automática nas vendas do ML</li>}
+                  {p.features.includes('nfse') && <li><IconCheck /> NFS-e Nacional (serviços)</li>}
                   {p.features.includes('api') && <li><IconCheck /> API e webhooks</li>}
                   <li><IconCheck /> IA {p.ai_model.includes('sonnet') ? 'avançada (Sonnet)' : 'rápida (Haiku)'}</li>
                 </ul>

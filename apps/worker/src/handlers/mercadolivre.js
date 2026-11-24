@@ -6,6 +6,7 @@ import { upsertContact, upsertConversation, addMessage, emit, createDraft } from
 import { respondWithAi } from './outbound.js';
 import * as ml from '../channels/mercadolivre.js';
 import { hasFeature } from '../shared.js';
+import { onInvoiceNotification } from './nfe.js';
 
 const now = () => new Date().toISOString();
 const lastId = (resource) => String(resource).split('?')[0].split('/').filter(Boolean).pop();
@@ -23,6 +24,7 @@ export async function onMlNotification(n) {
   if (topic === 'shipments') return onShipment(orgId, c, lastId(n.resource));
   if (topic === 'items') return onItem(orgId, c, lastId(n.resource));
   if (topic === 'claims' || topic === 'post_purchase') return onClaim(orgId, c, lastId(n.resource));
+  if (topic === 'invoices') return onInvoiceNotification(orgId, lastId(n.resource));
 }
 
 async function onQuestion(orgId, c, questionId) {
@@ -97,9 +99,11 @@ async function onOrder(orgId, c, orderId) {
     await emit(orgId, 'order.updated', { order: saved });
   }
 
-  // Nota fiscal automática (pedido pago, plano com NF-e, Omie conectada)
+  // Nota fiscal pelo Faturador do ML: no modo automático emite quando a venda é paga;
+  // no Full o ML emite sozinho e a Iris só busca a nota (modo manual ou automático).
   const { org, plan } = await loadOrg(orgId);
-  if (o.status === 'paid' && org.nfe_mode !== 'off' && hasFeature(plan, 'nfe') && (saved.nfe_status === 'none' || saved.nfe_status === 'error')) {
+  const wants = org.nfe_mode === 'auto' || (org.nfe_mode === 'manual' && row.logistic_type === 'fulfillment');
+  if (o.status === 'paid' && wants && hasFeature(plan, 'nfe') && saved.nfe_status === 'none') {
     await enqueue('nfe.process', orgId, { orderId: saved.id }, `nfe:${saved.id}`);
   }
 }

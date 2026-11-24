@@ -23,7 +23,7 @@ const { parseModelJson } = await import('../src/ai.js');
 const ORG = '11111111-1111-1111-1111-111111111111';
 const PLANS = [
   { id: 'gratis', name: 'Teste', price_cents: 0, ai_replies_month: 100, products_max: 50, users_max: 1, channels: ['whatsapp', 'mercadolivre'], ai_model: 'claude-haiku-5-5', features: ['crm'] },
-  { id: 'pro', name: 'Pro', price_cents: 19700, ai_replies_month: 6000, products_max: 20000, users_max: 5, channels: ['whatsapp', 'mercadolivre'], ai_model: 'claude-sonnet-5-5', features: ['crm', 'omie', 'api', 'webhooks', 'nfe'] },
+  { id: 'pro', name: 'Pro', price_cents: 19700, ai_replies_month: 6000, products_max: 20000, users_max: 5, channels: ['whatsapp', 'mercadolivre'], ai_model: 'claude-sonnet-5-5', features: ['crm', 'api', 'webhooks', 'nfe', 'nfse'] },
 ];
 const apiKey = shared.newApiKey();
 
@@ -39,12 +39,10 @@ function seed(orgPatch = {}) {
     integrations: [
       { id: 'i-wa', org_id: ORG, provider: 'whatsapp', status: 'connected', external_id: 'PNID1', meta: {} },
       { id: 'i-ml', org_id: ORG, provider: 'mercadolivre', status: 'connected', external_id: '999', meta: {} },
-      { id: 'i-om', org_id: ORG, provider: 'omie', status: 'connected', external_id: 'k', meta: { nfe: { categoryCode: '1.01.01', accountCode: '123' } } },
     ],
     integration_secrets: [
       { integration_id: 'i-wa', ciphertext: shared.encryptJson({ access_token: 'WA_TOKEN' }, KEY) },
       { integration_id: 'i-ml', ciphertext: shared.encryptJson({ access_token: 'ML_TOKEN', refresh_token: 'r', expires_at: Date.now() + 1e7 }, KEY) },
-      { integration_id: 'i-om', ciphertext: shared.encryptJson({ app_key: 'k', app_secret: 's' }, KEY) },
     ],
   });
   setDb(db);
@@ -209,63 +207,190 @@ test('Painel não consegue enviar rascunho de outra organização', async () => 
   await assert.rejects(handlers['outbound.send']({ draftId: d.id }, { org_id: ORG }), /não encontrado/);
 });
 
-test('Venda no ML → pedido, contato no CRM e pedido criado na Omie (modo só pedido)', async () => {
-  seed({ nfe_mode: 'order_only' });
-  await db.insert('products', { org_id: ORG, source: 'omie', external_id: '5001', sku: 'FAROL-1', name: 'Farol Gol' });
-  const f = fakeFetch({
-    'https://api.mercadolibre.com/orders/2000': () => ({
-      id: 2000, pack_id: null, status: 'paid', total_amount: 199.9, shipping: { id: 3000 },
-      buyer: { id: 42, nickname: 'ANA123', first_name: 'Ana', last_name: 'Souza' },
-      order_items: [{ item: { id: 'MLB1', title: 'Farol Gol', seller_sku: 'FAROL-1' }, quantity: 1, unit_price: 199.9 }],
-    }),
-    'https://api.mercadolibre.com/shipments/3000': () => ({ status: 'ready_to_ship', logistic_type: 'self_service' }),
-    'https://app.omie.com.br/api/v1/geral/clientes/': () => ({ codigo_cliente_omie: 888 }),
-    'https://app.omie.com.br/api/v1/produtos/pedido/': (u, o) => {
-      const p = JSON.parse(o.body).param[0];
-      assert.equal(p.det[0].produto.codigo_produto, 5001);
-      assert.equal(p.cabecalho.codigo_pedido_integracao, 'ml-2000');
-      return { codigo_pedido: 7777 };
+const ML = 'https://api.mercadolibre.com';
+const mlOrder = (extra = {}) => ({
+  [`${ML}/orders/2000`]: () => ({
+    id: 2000, pack_id: null, status: 'paid', total_amount: 199.9, shipping: { id: 3000 },
+    buyer: { id: 42, nickname: 'ANA123', first_name: 'Ana', last_name: 'Souza' },
+    order_items: [{ item: { id: 'MLB1', title: 'Farol Gol', seller_sku: 'FAROL-1' }, quantity: 1, unit_price: 199.9 }],
+  }),
+  [`${ML}/shipments/3000`]: () => ({ status: 'ready_to_ship', logistic_type: 'self_service' }),
+  ...extra,
+});
+
+test('Venda paga no ML → pedido, CRM e NF-e emitida pelo Faturador do ML (modo automático)', async () => {
+  seed({ nfe_mode: 'auto' });
+  let emitted = null;
+  const f = fakeFetch(mlOrder({
+    [`${ML}/users/999/invoices/orders`]: (u, o) => {
+      if ((o.method || 'GET') === 'GET') return new Response('{"message":"not found"}', { status: 404 });
+      emitted = JSON.parse(o.body);
+      return { id: 'INV1', status: 'processing' };
     },
-  });
+    [`${ML}/users/999/invoices/documents/xml/INV1/authorized`]: () => new Response('<nfeProc>ok</nfeProc>', { status: 200 }),
+    [`${ML}/users/999/invoices/INV1`]: () => ({ id: 'INV1', status: 'authorized', attributes: { invoice_key: '3526', xml_location: '/users/999/invoices/documents/xml/INV1/authorized' } }),
+  }));
   try {
     await handlers['ml.notification']({ topic: 'orders_v2', resource: '/orders/2000', user_id: 999 });
+    await drain(); // emite e agenda a consulta para daqui a 45 s
+    const o = db.tables.orders[0];
+    assert.deepEqual(emitted, { orders: [2000] });
+    assert.equal(o.nfe_status, 'processing');
+    assert.equal(o.nfe_invoice_id, 'INV1');
+    // o aviso do tópico "invoices" faz consultar na hora
+    await handlers['ml.notification']({ topic: 'invoices', resource: '/users/999/invoices/INV1', user_id: 999 });
     await drain();
   } finally {
     f.restore();
   }
   const o = db.tables.orders[0];
   assert.equal(o.total_cents, 19990);
-  assert.equal(o.omie_order_id, '7777');
-  assert.equal(o.nfe_status, 'order_created');
+  assert.equal(o.nfe_status, 'authorized');
+  assert.equal(o.nfe_key, '3526');
   assert.equal(db.tables.contacts[0].stage, 'cliente');
+  assert.ok(db.tables.jobs.some((j) => j.kind === 'webhook.dispatch' || j.kind === 'nfe.process'));
 });
 
-test('Nota fiscal: Full não anexa (o ML emite)', async () => {
-  seed({ nfe_mode: 'auto' });
-  const [o] = await db.insert('orders', { org_id: ORG, source: 'mercadolivre', external_id: '1', status: 'paid', logistic_type: 'fulfillment', items: [] });
-  await handlers['nfe.process']({ orderId: o.id }, { org_id: ORG });
-  assert.equal(db.tables.orders[0].nfe_status, 'not_allowed');
-});
-
-test('Omie: importa página e agenda a próxima', async () => {
-  const f = fakeFetch({
-    'https://app.omie.com.br/api/v1/geral/produtos/': () => ({
-      total_de_paginas: 3, total_de_registros: 250,
-      produto_servico_cadastro: [{ codigo_produto: 1, codigo: 'A1', descricao: 'Cabo USB-C', valor_unitario: 29.9, inativo: 'N' }],
-    }),
-  });
+test('NF-e: modo manual não emite sozinho; Full só busca a nota do ML', async () => {
+  seed({ nfe_mode: 'manual' });
+  const f = fakeFetch(mlOrder());
   try {
-    await handlers['omie.import']({ mode: 'all', page: 1 }, { org_id: ORG });
+    await handlers['ml.notification']({ topic: 'orders_v2', resource: '/orders/2000', user_id: 999 });
   } finally {
     f.restore();
   }
-  assert.equal(db.tables.products[0].price_cents, 2990);
-  assert.equal(db.tables.jobs.find((j) => j.kind === 'omie.import').payload.page, 2);
+  assert.equal((db.tables.jobs || []).filter((j) => j.kind === 'nfe.process').length, 0);
+
+  const [full] = await db.insert('orders', { org_id: ORG, source: 'mercadolivre', external_id: '7', status: 'paid', logistic_type: 'fulfillment', items: [] });
+  let posted = false;
+  const g = fakeFetch({
+    [`${ML}/users/999/invoices/orders`]: (u, o) => { if (o.method === 'POST') posted = true; return new Response('{}', { status: 404 }); },
+  });
+  try {
+    await handlers['nfe.process']({ orderId: full.id, manual: true }, { org_id: ORG });
+  } finally {
+    g.restore();
+  }
+  assert.equal(posted, false);
+  assert.equal(db.tables.orders.find((o) => o.id === full.id).nfe_status, 'processing');
 });
 
-test('Plano sem Omie não importa', async () => {
+test('NF-e: rejeição do Faturador mostra o motivo', async () => {
+  seed({ nfe_mode: 'auto' });
+  const [o] = await db.insert('orders', { org_id: ORG, source: 'mercadolivre', external_id: '8', status: 'paid', nfe_status: 'processing', nfe_invoice_id: 'X9', items: [] });
+  const f = fakeFetch({
+    [`${ML}/users/999/invoices/X9`]: () => ({ id: 'X9', status: 'rejected', errors: [{ code: 'E77' }] }),
+    [`${ML}/users/invoices/errors/MLB/E77`]: () => ({ message: 'NCM do item MLB1 não informado' }),
+  });
+  try {
+    await assert.rejects(handlers['nfe.process']({ orderId: o.id, step: 'wait' }, { org_id: ORG }), /NCM/);
+  } finally {
+    f.restore();
+  }
+  assert.equal(db.tables.orders[0].nfe_status, 'error');
+  assert.match(db.tables.orders[0].nfe_error, /NCM do item/);
+});
+
+// ---------- NFS-e Nacional ----------
+const nfse = await import('../src/channels/nfse.js');
+const { execFileSync } = await import('node:child_process');
+const { mkdtempSync, readFileSync } = await import('node:fs');
+const { tmpdir } = await import('node:os');
+const { join } = await import('node:path');
+const certDir = mkdtempSync(join(tmpdir(), 'iris-test-'));
+execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-nodes', '-keyout', join(certDir, 'k.pem'), '-out', join(certDir, 'c.pem'), '-days', '5', '-subj', '/CN=TOP CONEXOES LTDA:11222333000181'], { stdio: 'ignore' });
+execFileSync('openssl', ['pkcs12', '-export', '-inkey', join(certDir, 'k.pem'), '-in', join(certDir, 'c.pem'), '-out', join(certDir, 'a1.pfx'), '-passout', 'pass:segredo'], { stdio: 'ignore' });
+const PFX = readFileSync(join(certDir, 'a1.pfx')).toString('base64');
+const NFSE_CFG = { tpAmb: 2, cnpj: '11222333000181', cLocEmi: '3552205', serie: '1', opSimpNac: '3', regApTribSN: '1', cTribNac: '010101', cNBS: '101011100' };
+
+function seedNfse(secret = { pfxB64: PFX, password: 'segredo' }, cfg = NFSE_CFG) {
+  db.tables.integrations.push({ id: 'i-nfse', org_id: ORG, provider: 'nfse', status: 'connected', external_id: cfg.cnpj, meta: { config: cfg }, updated_at: String(Math.random()) });
+  db.tables.integration_secrets.push({ integration_id: 'i-nfse', ciphertext: shared.encryptJson(secret, KEY) });
+}
+
+test('NFS-e: DPS assinada, enviada compactada e nota autorizada', async () => {
+  seedNfse();
+  const [inv] = await db.insert('service_invoices', { org_id: ORG, status: 'pending', amount_cents: 19700, description: 'Plano Pro da Iris — novembro', taker: { doc: '123.456.789-09', name: 'Ana Souza', email: 'ana@x.com' } });
+  let sent;
+  nfse.setTransport((method, path, body) => {
+    if (method === 'POST' && path === '/nfse') {
+      sent = nfse.unpack(body.dpsXmlGZipB64);
+      return { status: 201, json: { chaveAcesso: '3'.repeat(50), idDps: 'x', nfseXmlGZipB64: nfse.pack('<NFSe><infNFSe><nNFSe>17</nNFSe></infNFSe></NFSe>') } };
+    }
+    return { status: 404, json: {} };
+  });
+  try {
+    await handlers['nfse.emit']({ invoiceId: inv.id }, { org_id: ORG });
+  } finally {
+    nfse.setTransport(null);
+  }
+  const row = db.tables.service_invoices[0];
+  assert.equal(row.status, 'authorized');
+  assert.equal(row.chave, '3'.repeat(50));
+  assert.equal(row.nfse_number, '17');
+  assert.equal(row.dps_id, 'DPS355220521122233300018100001000000000000001');
+  assert.match(sent, /^<\?xml version="1.0" encoding="UTF-8"\?><DPS xmlns="http:\/\/www.sped.fazenda.gov.br\/nfse" versao="1.01"><infDPS Id="DPS3552205/);
+  assert.match(sent, /<toma><CPF>12345678909<\/CPF><xNome>Ana Souza<\/xNome><email>ana@x.com<\/email><\/toma>/);
+  assert.match(sent, /<vServ>197.00<\/vServ>/);
+
+  // assinatura confere: digest do infDPS canônico e RSA-SHA256 do SignedInfo
+  const { createHash, createVerify } = await import('node:crypto');
+  const body = sent.match(/<infDPS Id="[^"]+">([\s\S]*)<\/infDPS>/)[1];
+  const id = sent.match(/<infDPS Id="([^"]+)"/)[1];
+  const digest = createHash('sha256').update(`<infDPS xmlns="${nfse.NS}" Id="${id}">${body}</infDPS>`).digest('base64');
+  assert.equal(sent.match(/<DigestValue>([^<]+)</)[1], digest);
+  const si = sent.match(/<SignedInfo>[\s\S]*<\/SignedInfo>/)[0].replace('<SignedInfo>', '<SignedInfo xmlns="http://www.w3.org/2000/09/xmldsig#">');
+  const ok = createVerify('RSA-SHA256').update(si).verify(readFileSync(join(certDir, 'c.pem')), sent.match(/<SignatureValue>([^<]+)</)[1], 'base64');
+  assert.ok(ok);
+});
+
+test('NFS-e: rejeição guarda o erro da Sefin; certificado de outro CNPJ é barrado', async () => {
+  seedNfse();
+  const [inv] = await db.insert('service_invoices', { org_id: ORG, status: 'pending', amount_cents: 5000, description: 'Consultoria', taker: {} });
+  nfse.setTransport((method, path) =>
+    method === 'POST' ? { status: 400, json: { erros: [{ Codigo: 'E0312', Descricao: 'Código de tributação não administrado pelo município' }] } } : { status: 404, json: {} });
+  try {
+    await handlers['nfse.emit']({ invoiceId: inv.id }, { org_id: ORG });
+  } finally {
+    nfse.setTransport(null);
+  }
+  assert.equal(db.tables.service_invoices[0].status, 'rejected');
+  assert.match(db.tables.service_invoices[0].error, /E0312/);
+
+  seed();
+  seedNfse(undefined, { ...NFSE_CFG, cnpj: '99888777000166' });
+  const [inv2] = await db.insert('service_invoices', { org_id: ORG, status: 'pending', amount_cents: 5000, description: 'Consultoria', taker: {} });
+  await assert.rejects(handlers['nfse.emit']({ invoiceId: inv2.id }, { org_id: ORG }), /certificado é do CNPJ 11222333000181/);
+  assert.equal(db.tables.service_invoices[0].status, 'error');
+});
+
+test('NFS-e: senha errada e plano sem NFS-e', async () => {
+  seedNfse({ pfxB64: PFX, password: 'errada' });
+  const [inv] = await db.insert('service_invoices', { org_id: ORG, status: 'pending', amount_cents: 5000, description: 'x', taker: {} });
+  await assert.rejects(handlers['nfse.emit']({ invoiceId: inv.id }, { org_id: ORG }), /senha do certificado incorreta/);
   seed({ plan_id: 'gratis' });
-  await assert.rejects(handlers['omie.import']({ mode: 'all' }, { org_id: ORG }), /não inclusa/);
+  const [inv2] = await db.insert('service_invoices', { org_id: ORG, status: 'pending', amount_cents: 5000, description: 'x', taker: {} });
+  await assert.rejects(handlers['nfse.emit']({ invoiceId: inv2.id }, { org_id: ORG }), /não está inclusa/);
+});
+
+test('NFS-e: cancelamento envia o evento e101101 assinado', async () => {
+  seedNfse();
+  const chave = '4'.repeat(50);
+  const [inv] = await db.insert('service_invoices', { org_id: ORG, status: 'authorized', chave, amount_cents: 5000, description: 'x', taker: {} });
+  let ev;
+  nfse.setTransport((method, path, body) => {
+    ev = { path, xml: nfse.unpack(body.pedidoRegistroEventoXmlGZipB64) };
+    return { status: 201, json: { eventoXmlGZipB64: nfse.pack('<evento/>') } };
+  });
+  try {
+    await handlers['nfse.cancel']({ invoiceId: inv.id, cMotivo: 1, xMotivo: 'Valor do serviço informado errado' }, { org_id: ORG });
+  } finally {
+    nfse.setTransport(null);
+  }
+  assert.equal(ev.path, `/nfse/${chave}/eventos`);
+  assert.match(ev.xml, new RegExp(`<pedRegEvento xmlns="${nfse.NS}" versao="1.01"><infPedReg Id="PRE${chave}101101">`));
+  assert.match(ev.xml, /<CNPJAutor>11222333000181<\/CNPJAutor><chNFSe>4+<\/chNFSe><e101101><xDesc>Cancelamento de NFS-e<\/xDesc><cMotivo>1<\/cMotivo>/);
+  assert.equal(db.tables.service_invoices[0].status, 'canceled');
 });
 
 test('API pública: produtos em massa, autenticação e plano', async () => {

@@ -2,7 +2,7 @@
 
 ## 1. Supabase (banco + login)
 1. Crie um projeto em supabase.com (plano Free, região São Paulo).
-2. Em **SQL Editor**, cole e rode `supabase/migrations/0001_iris.sql` e depois `0002_grants.sql`.
+2. Em **SQL Editor**, cole e rode `supabase/migrations/0001_iris.sql`, depois `0002_grants.sql` e `0003_nfe_ml_nfse.sql`.
 3. **Authentication → Providers**: deixe E-mail ligado. Para "Continuar com Google", ligue o Google também.
 4. **Authentication → URL Configuration**: Site URL = URL do painel; adicione `https://SEU_PAINEL/auth/callback`.
 5. Crie sua conta pelo painel e, no SQL Editor, torne-se admin da plataforma:
@@ -77,6 +77,8 @@ console.anthropic.com → API Keys → `ANTHROPIC_API_KEY` no worker. Defina um 
 ## Checklist antes de vender
 - [ ] Testar com uma conta de teste do ML (usuários de teste da API)
 - [ ] Testar o WhatsApp com o número de teste da Meta
-- [ ] Rodar a NF-e no modo "só pedido" em uma venda real e conferir na Omie
+- [ ] Ativar o Faturador na conta do ML, preencher NCM/origem nos anúncios e emitir uma NF-e no modo manual
+- [ ] NFS-e: emitir uma nota em produção restrita, conferir no Portal NFS-e e só então trocar para produção
+- [ ] Servidor do worker com `openssl` instalado (converte o certificado .pfx)
 - [ ] Termos de uso e política de privacidade (LGPD) no site
 - [ ] Backup: o Supabase Free não tem backup automático, então exporte o banco toda semana

@@ -44,7 +44,7 @@ export default async function Inicio() {
         </div>
         <div className="box stack">
           <strong>Conexões</strong>
-          {[['whatsapp', 'WhatsApp'], ['mercadolivre', 'Mercado Livre'], ['omie', 'Omie'], ['google', 'Google Drive']].map(([k, label]) => {
+          {[['whatsapp', 'WhatsApp'], ['mercadolivre', 'Mercado Livre'], ['google', 'Google Drive'], ['nfse', 'NFS-e']].map(([k, label]) => {
             const i = byProvider[k];
             const st = !i || i.status === 'disconnected' ? ['', 'não conectado'] : i.status === 'error' ? ['err', 'erro'] : ['ok', 'conectado'];
             return (

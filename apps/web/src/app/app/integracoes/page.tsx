@@ -1,10 +1,10 @@
 import { requireOrg, hasFeature } from '@/lib/org';
-import { connectOmie, saveOmieNfe, disconnect, googleResync, generateApiKey, addWebhook, removeWebhook } from '../actions';
+import { saveNfse, disconnect, googleResync, generateApiKey, addWebhook, removeWebhook } from '../actions';
 import { ActionForm, SubmitButton } from '@/components/client';
 import { WhatsappConnect } from './whatsapp-connect';
-import { IconChat, IconCart, IconDrive, IconFactory } from '@/components/icons';
+import { IconChat, IconCart, IconDrive, IconInvoice } from '@/components/icons';
 
-const EVENTS = ['message.received', 'draft.created', 'contact.created', 'order.created', 'order.updated', 'claim.opened', 'invoice.order_created', 'invoice.attached'];
+const EVENTS = ['message.received', 'draft.created', 'contact.created', 'order.created', 'order.updated', 'claim.opened', 'invoice.requested', 'invoice.authorized', 'service_invoice.authorized', 'service_invoice.rejected', 'service_invoice.canceled'];
 
 function Status({ i }: { i?: any }) {
   if (!i || i.status === 'disconnected') return <span className="badge">não conectado</span>;
@@ -27,10 +27,11 @@ export default async function Integracoes() {
   const by = Object.fromEntries((integs || []).map((i) => [i.provider, i]));
   const on = (p: string) => by[p] && by[p].status !== 'disconnected';
   const worker = process.env.NEXT_PUBLIC_WORKER_URL || '';
+  const nf: any = by.nfse?.meta?.config || {};
 
   return (
     <>
-      <div className="page-head"><div><h1>Integrações</h1><p>Conecte seus canais, seu ERP e seu Google Drive.</p></div></div>
+      <div className="page-head"><div><h1>Integrações</h1><p>Conecte seus canais, a nota fiscal de serviço e o seu Google Drive.</p></div></div>
 
       <div className="grid grid-2">
         {/* WhatsApp */}
@@ -66,29 +67,73 @@ export default async function Integracoes() {
           )}
         </div>
 
-        {/* Omie */}
+        {/* NFS-e Nacional */}
         <div className="box stack">
-          <div className="row spread"><strong className="section-title"><span className="icon-tile sm t-orange"><IconFactory size={18} /></span>Omie (produtos e NF-e)</strong><Status i={by.omie} /></div>
-          {!hasFeature(plan, 'omie') ? <span className="muted small">Disponível nos planos Starter e Pro.</span> : on('omie') ? (
-            <>
-              <ActionForm action={saveOmieNfe}>
-                <span className="small muted">Para a nota fiscal automática (veja os códigos na Omie em Configurações):</span>
-                <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
-                  <label>Código da categoria<input name="category" defaultValue={by.omie.meta?.nfe?.categoryCode} placeholder="1.01.01" /></label>
-                  <label>Código da conta corrente<input name="account" defaultValue={by.omie.meta?.nfe?.accountCode} /></label>
+          <div className="row spread"><strong className="section-title"><span className="icon-tile sm t-orange"><IconInvoice size={18} /></span>NFS-e Nacional (notas de serviço)</strong><Status i={by.nfse} /></div>
+          {!hasFeature(plan, 'nfse') ? <span className="muted small">Disponível no plano Pro.</span> : (
+            <ActionForm action={saveNfse}>
+              <span className="small muted">
+                Emissão pela API oficial do governo (Sefin Nacional). Precisa do certificado digital A1 (e-CNPJ) da empresa e de o seu
+                município estar no padrão nacional. Comece em <strong>produção restrita</strong> para testar sem valor fiscal.
+              </span>
+              <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <label>Ambiente
+                  <select name="tpAmb" defaultValue={String(nf.tpAmb || 2)}>
+                    <option value="2">Produção restrita (testes)</option>
+                    <option value="1">Produção (vale de verdade)</option>
+                  </select>
+                </label>
+                <label>CNPJ do prestador<input name="cnpj" required defaultValue={nf.cnpj} placeholder="00.000.000/0001-00" inputMode="numeric" /></label>
+                <label>Inscrição municipal<input name="im" defaultValue={nf.im} /></label>
+                <label>Município (código IBGE)<input name="cLocEmi" required defaultValue={nf.cLocEmi} placeholder="3552205" inputMode="numeric" /></label>
+                <label>Regime
+                  <select name="opSimpNac" defaultValue={nf.opSimpNac || '3'}>
+                    <option value="1">Não optante do Simples</option>
+                    <option value="2">MEI</option>
+                    <option value="3">Simples Nacional (ME/EPP)</option>
+                  </select>
+                </label>
+                <label>Apuração no Simples
+                  <select name="regApTribSN" defaultValue={nf.regApTribSN || '1'}>
+                    <option value="1">Tributos pelo Simples</option>
+                    <option value="2">Federais pelo Simples, ISS por fora</option>
+                    <option value="3">Tudo por fora do Simples</option>
+                  </select>
+                </label>
+                <label>Código de tributação nacional<input name="cTribNac" required defaultValue={nf.cTribNac} placeholder="010101" inputMode="numeric" /></label>
+                <label>Código NBS<input name="cNBS" required defaultValue={nf.cNBS} placeholder="101011100" inputMode="numeric" /></label>
+                <label>Código de tributação municipal (opcional)<input name="cTribMun" defaultValue={nf.cTribMun} /></label>
+                <label>Alíquota do ISS % (opcional)<input name="pAliq" defaultValue={nf.pAliq} placeholder="2,00" inputMode="decimal" /></label>
+                <label>% total de tributos do Simples (opcional)<input name="pTotTribSN" defaultValue={nf.pTotTribSN} placeholder="6,00" inputMode="decimal" /></label>
+                <label>Regime especial<input name="regEspTrib" defaultValue={nf.regEspTrib || '0'} inputMode="numeric" /></label>
+                <label>Série da DPS<input name="serie" defaultValue={nf.serie || '1'} inputMode="numeric" /></label>
+                <label>Próximo número da DPS<input name="nextNumber" defaultValue={nf.nextNumber || 1} inputMode="numeric" /></label>
+              </div>
+              <details>
+                <summary className="small">IBS/CBS (reforma tributária)</summary>
+                <div className="stack" style={{ marginTop: 8 }}>
+                  <label className="row"><input type="checkbox" name="ibscbs" defaultChecked={!!nf.ibscbs?.enabled} /> Informar o grupo IBS/CBS na nota</label>
+                  <div className="grid" style={{ gridTemplateColumns: '1fr 1fr 1fr' }}>
+                    <label>Indicador da operação<input name="cIndOp" defaultValue={nf.ibscbs?.cIndOp} placeholder="6 dígitos" inputMode="numeric" /></label>
+                    <label>CST<input name="CST" defaultValue={nf.ibscbs?.CST} placeholder="000" inputMode="numeric" /></label>
+                    <label>Classificação tributária<input name="cClassTrib" defaultValue={nf.ibscbs?.cClassTrib} placeholder="000001" inputMode="numeric" /></label>
+                  </div>
+                  <label className="row"><input type="checkbox" name="indFinal" defaultChecked={!!nf.ibscbs?.indFinal} /> Uso ou consumo pessoal do tomador</label>
+                  <span className="small muted">Confirme os códigos com o seu contador.</span>
                 </div>
-                <div><SubmitButton className="btn ghost">Salvar</SubmitButton></div>
-              </ActionForm>
-              <Disconnect provider="omie" />
-            </>
-          ) : (
-            <ActionForm action={connectOmie}>
-              <span className="small muted">Na Omie: Configurações → Aplicativo → Resumo do App → Chave de Integração.</span>
-              <label>App Key<input name="app_key" required autoComplete="off" /></label>
-              <label>App Secret<input name="app_secret" type="password" required autoComplete="off" /></label>
-              <div><SubmitButton pendingText="Testando…">Conectar Omie</SubmitButton></div>
+              </details>
+              <div className="grid" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <label>Certificado A1 (.pfx){on('nfse') && <span className="small muted"> · já enviado, envie só para trocar</span>}<input name="pfx" type="file" accept=".pfx,.p12,application/x-pkcs12" required={!on('nfse')} /></label>
+                <label>Senha do certificado<input name="password" type="password" autoComplete="off" /></label>
+              </div>
+              <span className="small muted">O certificado fica criptografado e só o servidor da Iris o usa, para assinar e enviar as suas notas.</span>
+              <div className="row">
+                <SubmitButton pendingText="Conferindo…">Salvar</SubmitButton>
+                {on('nfse') && <a className="btn ghost" href="/app/notas">Emitir nota de serviço</a>}
+              </div>
             </ActionForm>
           )}
+          {on('nfse') && <Disconnect provider="nfse" />}
         </div>
       </div>
 

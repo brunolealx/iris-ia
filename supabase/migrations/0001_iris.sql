@@ -16,15 +16,15 @@ create table public.plans (
   users_max int not null,
   channels text[] not null,                    -- {whatsapp,mercadolivre}
   ai_model text not null default 'claude-haiku-5-5',
-  features text[] not null default '{}',       -- {omie,api,webhooks,nfe,crm}
+  features text[] not null default '{}',       -- {crm,sheets,api,webhooks,nfe,nfse}
   active boolean not null default true,
   sort int not null default 0
 );
 
 insert into public.plans (id, name, price_cents, ai_replies_month, products_max, users_max, channels, ai_model, features, sort) values
   ('gratis',  'Teste grátis', 0,     100,  50,    1, '{whatsapp,mercadolivre}', 'claude-haiku-5-5',  '{crm,sheets}', 0),
-  ('starter', 'Starter',      9700,  1500, 1000,  2, '{whatsapp,mercadolivre}', 'claude-haiku-5-5',  '{crm,omie,sheets}', 1),
-  ('pro',     'Pro',          19700, 6000, 20000, 5, '{whatsapp,mercadolivre}', 'claude-sonnet-5-5', '{crm,omie,sheets,api,webhooks,nfe}', 2);
+  ('starter', 'Starter',      9700,  1500, 1000,  2, '{whatsapp,mercadolivre}', 'claude-haiku-5-5',  '{crm,sheets}', 1),
+  ('pro',     'Pro',          19700, 6000, 20000, 5, '{whatsapp,mercadolivre}', 'claude-sonnet-5-5', '{crm,sheets,api,webhooks,nfe,nfse}', 2);
 
 -- ---------- Organizações e membros ----------
 create table public.organizations (
@@ -43,7 +43,7 @@ create table public.organizations (
   mode_ml text not null default 'suggest' check (mode_ml in ('suggest','auto','off')),
   min_confidence numeric not null default 0.75,
   -- Nota fiscal
-  nfe_mode text not null default 'off' check (nfe_mode in ('off','order_only','auto')),
+  nfe_mode text not null default 'off' check (nfe_mode in ('off','manual','auto')),
   -- API pública (chave guardada só como hash)
   api_key_prefix text,
   api_key_hash text,
@@ -68,9 +68,9 @@ create table public.platform_admins (
 create table public.integrations (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.organizations(id) on delete cascade,
-  provider text not null check (provider in ('whatsapp','mercadolivre','omie','google')),
+  provider text not null check (provider in ('whatsapp','mercadolivre','google','nfse')),
   status text not null default 'connected' check (status in ('connected','error','disconnected')),
-  external_id text,            -- phone_number_id (WA) | user_id do vendedor (ML) | app_key (Omie)
+  external_id text,            -- phone_number_id (WA) | user_id do vendedor (ML) | e-mail (Google) | CNPJ (NFS-e)
   display_name text,           -- número formatado, apelido do vendedor...
   meta jsonb not null default '{}',
   last_error text,
@@ -149,12 +149,12 @@ create table public.drafts (
 );
 create index drafts_pending on public.drafts(org_id, status, created_at desc);
 
--- ---------- Produtos (Omie, CSV, manual, ML) ----------
+-- ---------- Produtos (CSV, manual, ML, API) ----------
 create table public.products (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.organizations(id) on delete cascade,
-  source text not null check (source in ('omie','csv','manual','mercadolivre')),
-  external_id text not null,   -- codigo_produto (Omie), SKU, id do anúncio
+  source text not null check (source in ('csv','manual','mercadolivre','api')),
+  external_id text not null,   -- SKU ou id do anúncio
   sku text,
   name text not null,
   description text not null default '',
@@ -197,8 +197,9 @@ create table public.orders (
   total_cents bigint not null default 0,
   items jsonb not null default '[]',
   buyer jsonb not null default '{}',
-  omie_order_id text,          -- pedido criado na Omie
-  nfe_status text not null default 'none' check (nfe_status in ('none','order_created','invoiced','attached','error','not_allowed')),
+  -- NF-e pelo Faturador do Mercado Livre
+  nfe_invoice_id text,         -- id da nota no Faturador
+  nfe_status text not null default 'none' check (nfe_status in ('none','processing','authorized','error','not_allowed')),
   nfe_key text,
   nfe_error text,
   created_at timestamptz not null default now(),
@@ -338,7 +339,7 @@ alter table public.jobs enable row level security;
 -- (Eventos de canal como wa.message/ml.notification só entram pelo worker.)
 create policy jobs_insert on public.jobs for insert with check (
   org_id is not null and is_member(org_id)
-  and kind in ('outbound.send','omie.import','omie.stock','nfe.process','google.setup','google.export')
+  and kind in ('outbound.send','nfe.process','google.setup','google.export')
   and dedupe_key is null
 );
 create policy jobs_read on public.jobs for select using (org_id is not null and is_member(org_id));

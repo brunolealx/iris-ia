@@ -1,6 +1,6 @@
 import { requireOrg, hasFeature } from '@/lib/org';
 import { brl } from '@iris/shared/plans';
-import { importCsv, omieImport, saveProduct } from '../actions';
+import { importCsv, saveProduct } from '../actions';
 import { ActionForm, CsvImport, SubmitButton } from '@/components/client';
 
 export default async function Produtos({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
@@ -9,8 +9,7 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
   let query = sb.from('products').select('*', { count: 'exact' }).eq('org_id', org.id).order('name').limit(200);
   if (q) query = query.or(`name.ilike.%${q.replace(/[%,()]/g, '')}%,sku.ilike.%${q.replace(/[%,()]/g, '')}%`);
   const { data: products, count } = await query;
-  const { data: omie } = await sb.from('integrations').select('status,meta').eq('org_id', org.id).eq('provider', 'omie').maybeSingle();
-  const imp = omie?.meta?.import;
+  const { data: ml } = await sb.from('integrations').select('status').eq('org_id', org.id).eq('provider', 'mercadolivre').maybeSingle();
 
   return (
     <>
@@ -21,19 +20,19 @@ export default async function Produtos({ searchParams }: { searchParams: Promise
 
       <div className="grid grid-2">
         <div className="box stack">
-          <strong>Importar da Omie</strong>
-          {!hasFeature(plan, 'omie') ? <span className="muted small">Disponível nos planos Starter e Pro.</span>
-            : !omie || omie.status === 'disconnected' ? <span className="muted small">Conecte a Omie em <a href="/app/integracoes">Integrações</a>.</span>
-            : (
-              <>
-                {imp && <span className="small muted">Última importação: página {imp.page} de {imp.totalPages} · {imp.total} produtos na Omie</span>}
-                <ActionForm action={omieImport}><SubmitButton pendingText="Iniciando…">Importar todos (em massa)</SubmitButton></ActionForm>
-                <ActionForm action={omieImport} className="row">
-                  <input name="codigo" placeholder="Código/SKU do produto na Omie" required style={{ flex: 1 }} />
-                  <SubmitButton className="btn ghost">Importar um</SubmitButton>
-                </ActionForm>
-              </>
-            )}
+          <strong>De onde vêm os produtos</strong>
+          <span className="small muted">
+            <strong>Mercado Livre:</strong>{' '}
+            {ml && ml.status !== 'disconnected'
+              ? 'seus anúncios entram aqui sozinhos sempre que são criados ou alterados no ML.'
+              : <>conecte a conta em <a href="/app/integracoes">Integrações</a> e os anúncios passam a entrar sozinhos.</>}
+          </span>
+          <span className="small muted"><strong>Planilha:</strong> importe em massa um arquivo CSV (ao lado).</span>
+          <span className="small muted"><strong>Um por um:</strong> use o cadastro manual.</span>
+          <span className="small muted">
+            <strong>Seu sistema:</strong>{' '}
+            {hasFeature(plan, 'api') ? <>envie em massa pela API (<code>POST /api/v1/products</code>).</> : 'pela API, no plano Pro.'}
+          </span>
         </div>
 
         <div className="box stack">

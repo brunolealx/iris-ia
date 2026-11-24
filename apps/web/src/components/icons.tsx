@@ -66,9 +66,6 @@ export const IconArrow = (p: P) => (
 export const IconDrive = (p: P) => (
   <svg {...base(p)}><path d="M8.5 4h7l5.5 9.5-3.5 6h-11L3 13.5z" /><path d="M8.5 4 14 13.5h7M3 13.5h11l-3.5 6" /></svg>
 );
-export const IconFactory = (p: P) => (
-  <svg {...base(p)}><path d="M3 20V10l5 3V10l5 3V5h4v15z" /><path d="M7 17h2M11.5 17h2" /></svg>
-);
 
 /** Marca da Iris: íris de olho verde com anel técnico. Mesmo desenho do favicon (app/icon.svg). */
 export function IrisMark({ size = 26 }: { size?: number }) {

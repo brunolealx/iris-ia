@@ -31,8 +31,8 @@ export default async function Assinatura({ searchParams }: { searchParams: Promi
             <ul className="checklist">
               <li>{p.ai_replies_month.toLocaleString('pt-BR')} respostas da IA/mês</li>
               <li>{p.products_max.toLocaleString('pt-BR')} produtos · {p.users_max} usuários</li>
-              {p.features.includes('omie') && <li>Omie</li>}
-              {p.features.includes('nfe') && <li>Nota fiscal automática</li>}
+              {p.features.includes('nfe') && <li>NF-e automática pelo Faturador do ML</li>}
+              {p.features.includes('nfse') && <li>NFS-e Nacional (notas de serviço)</li>}
               {p.features.includes('api') && <li>API e webhooks</li>}
             </ul>
             <button className={`btn ${p.id === plan.id && org.status === 'active' ? 'ghost' : ''}`} disabled={p.id === plan.id && org.status === 'active'}>

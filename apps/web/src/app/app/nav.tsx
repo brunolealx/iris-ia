@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { IconHome, IconChat, IconUsers, IconCart, IconCatalog, IconSpark, IconPlug, IconCard } from '@/components/icons';
+import { IconHome, IconChat, IconUsers, IconCart, IconCatalog, IconSpark, IconPlug, IconCard, IconInvoice } from '@/components/icons';
 
 const ITEMS = [
   ['/app', IconHome, 'Início'],
   ['/app/conversas', IconChat, 'Conversas'],
   ['/app/crm', IconUsers, 'CRM'],
   ['/app/vendas', IconCart, 'Vendas e NF-e'],
+  ['/app/notas', IconInvoice, 'Notas de serviço'],
   ['/app/produtos', IconCatalog, 'Produtos'],
   ['/app/ia', IconSpark, 'IA'],
   ['/app/integracoes', IconPlug, 'Integrações'],

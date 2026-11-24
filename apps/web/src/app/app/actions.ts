@@ -99,7 +99,7 @@ export async function saveAi(_: any, f: FormData): Promise<Result> {
     mode_whatsapp: modes.includes(str(f, 'mode_whatsapp')) ? str(f, 'mode_whatsapp') : 'suggest',
     mode_ml: modes.includes(str(f, 'mode_ml')) ? str(f, 'mode_ml') : 'suggest',
     min_confidence: Math.min(1, Math.max(0.3, Number(str(f, 'min_confidence')) || 0.75)),
-    nfe_mode: ['off', 'order_only', 'auto'].includes(str(f, 'nfe_mode')) ? str(f, 'nfe_mode') : 'off',
+    nfe_mode: ['off', 'manual', 'auto'].includes(str(f, 'nfe_mode')) ? str(f, 'nfe_mode') : 'off',
   };
   const { error } = await sb.from('organizations').update(patch).eq('id', org.id);
   if (error) return fail(error.message);
@@ -143,44 +143,127 @@ export async function saveProduct(_: any, f: FormData): Promise<Result> {
   return ok('Produto salvo.');
 }
 
-export async function omieImport(_: any, f: FormData): Promise<Result> {
-  const { sb, org, plan } = await requireOrg();
-  if (!hasFeature(plan, 'omie')) return fail(`A importação da Omie não está no plano ${plan.name}.`);
-  const code = str(f, 'codigo', 80);
-  await job(sb, org.id, 'omie.import', code ? { mode: 'one', codigo: code } : { mode: 'all', page: 1 });
-  return ok(code ? `Importando o produto ${code}…` : 'Importação completa iniciada. Acompanhe a contagem nesta página.');
-}
-
 // ---------------- Integrações ----------------
 
-export async function connectOmie(_: any, f: FormData): Promise<Result> {
-  const { org, plan } = await requireOrg();
-  if (!hasFeature(plan, 'omie')) return fail(`Omie não está no plano ${plan.name}.`);
-  const app_key = str(f, 'app_key', 40);
-  const app_secret = str(f, 'app_secret', 80);
-  if (!app_key || !app_secret) return fail('Informe App Key e App Secret.');
-  // testa as credenciais antes de salvar
-  const res = await fetch('https://app.omie.com.br/api/v1/geral/produtos/', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ call: 'ListarProdutos', app_key, app_secret, param: [{ pagina: 1, registros_por_pagina: 1, apenas_importado_api: 'N', filtrar_apenas_omiepdv: 'N' }] }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (data.faultstring && !/n[aã]o existem registros/i.test(data.faultstring)) return fail(`A Omie recusou: ${data.faultstring}`);
-  await saveIntegration(org.id, 'omie', {
-    external_id: `${org.id}:${app_key}`, display_name: `App ${app_key}`,
-    meta: { total: data.total_de_registros ?? 0, nfe: { categoryCode: str(f, 'category', 20), accountCode: str(f, 'account', 20) } },
-  }, { app_key, app_secret });
-  revalidatePath('/app/integracoes');
-  return ok(`Omie conectada (${data.total_de_registros ?? 0} produtos encontrados).`);
+// ---------------- NFS-e Nacional (notas de serviço) ----------------
+
+const digits = (v: string) => v.replace(/\D/g, '');
+
+/** Job criado pelo servidor (os tipos da NFS-e não podem ser criados direto pelo painel). */
+async function serverJob(orgId: string, kind: string, payload: any) {
+  const { error } = await supabaseAdmin().from('jobs').insert({ org_id: orgId, kind, payload });
+  if (error) throw new Error(error.message);
 }
 
-export async function saveOmieNfe(_: any, f: FormData): Promise<Result> {
+export async function saveNfse(_: any, f: FormData): Promise<Result> {
+  const { sb, org, plan, role } = await requireOrg();
+  if (!hasFeature(plan, 'nfse')) return fail(`A NFS-e não está no plano ${plan.name}.`);
+  if (role === 'agent') return fail('Só o dono ou um administrador pode configurar a nota fiscal.');
+  const cfg = {
+    tpAmb: str(f, 'tpAmb') === '1' ? 1 : 2,
+    cnpj: digits(str(f, 'cnpj', 20)),
+    im: str(f, 'im', 20),
+    cLocEmi: digits(str(f, 'cLocEmi', 10)),
+    serie: digits(str(f, 'serie', 5)) || '1',
+    nextNumber: Math.max(1, Number(digits(str(f, 'nextNumber', 15))) || 1),
+    opSimpNac: ['1', '2', '3'].includes(str(f, 'opSimpNac')) ? str(f, 'opSimpNac') : '1',
+    regApTribSN: ['1', '2', '3'].includes(str(f, 'regApTribSN')) ? str(f, 'regApTribSN') : '1',
+    regEspTrib: digits(str(f, 'regEspTrib', 1)) || '0',
+    cTribNac: digits(str(f, 'cTribNac', 6)),
+    cTribMun: str(f, 'cTribMun', 20),
+    cNBS: digits(str(f, 'cNBS', 9)),
+    pAliq: str(f, 'pAliq', 6).replace(',', '.'),
+    pTotTribSN: str(f, 'pTotTribSN', 6).replace(',', '.'),
+    ibscbs: {
+      enabled: f.get('ibscbs') === 'on',
+      cIndOp: digits(str(f, 'cIndOp', 6)), CST: digits(str(f, 'CST', 3)), cClassTrib: digits(str(f, 'cClassTrib', 6)), indFinal: f.get('indFinal') === 'on',
+    },
+  };
+  if (cfg.cnpj.length !== 14 && cfg.cnpj.length !== 11) return fail('Informe o CNPJ (ou CPF) do prestador.');
+  if (cfg.cLocEmi.length !== 7) return fail('O código do município é o código IBGE de 7 dígitos (Sorocaba: 3552205).');
+  if (cfg.cTribNac.length !== 6) return fail('O código de tributação nacional tem 6 dígitos (item da LC 116, ex.: 010101).');
+  if (cfg.cNBS.length !== 9) return fail('O código NBS tem 9 dígitos.');
+
+  const file = f.get('pfx');
+  const password = String(f.get('password') ?? '');
+  const { data: current } = await sb.from('integrations').select('id,status,meta').eq('org_id', org.id).eq('provider', 'nfse').maybeSingle();
+  const info = { external_id: `${org.id}:${cfg.cnpj}`, display_name: `CNPJ ${cfg.cnpj}`, meta: { ...(current?.meta || {}), config: cfg } };
+
+  if (file instanceof File && file.size > 0) {
+    if (file.size > 50_000) return fail('O arquivo do certificado parece grande demais (envie o .pfx ou .p12 do certificado A1).');
+    const pfx = Buffer.from(await file.arrayBuffer());
+    try {
+      // confere a senha e o formato antes de guardar (o worker converte e assina)
+      const { createSecureContext } = await import('node:tls');
+      createSecureContext({ pfx, passphrase: password });
+    } catch (e: any) {
+      const m = String(e?.message || '');
+      if (/mac verify|password/i.test(m)) return fail('Senha do certificado incorreta.');
+      if (!/unsupported/i.test(m)) return fail(`Não consegui ler o certificado: ${m}`);
+      // certificados antigos (RC2/3DES) não abrem aqui, mas o worker abre com openssl -legacy
+    }
+    await saveIntegration(org.id, 'nfse', info, { pfxB64: pfx.toString('base64'), password });
+  } else if (current && current.status !== 'disconnected') {
+    await supabaseAdmin().from('integrations').update({ ...info, updated_at: new Date().toISOString() }).eq('id', current.id);
+  } else {
+    return fail('Envie o certificado digital A1 (.pfx) da empresa.');
+  }
+  revalidatePath('/app/integracoes');
+  revalidatePath('/app/notas');
+  return ok(cfg.tpAmb === 1 ? 'NFS-e configurada em PRODUÇÃO: as notas valem de verdade.' : 'NFS-e configurada em produção restrita (testes, sem valor fiscal).');
+}
+
+export async function createServiceInvoice(_: any, f: FormData): Promise<Result> {
+  const { sb, org, plan, user } = await requireOrg();
+  if (!hasFeature(plan, 'nfse')) return fail(`A NFS-e não está no plano ${plan.name}.`);
+  const { data: integ } = await sb.from('integrations').select('status').eq('org_id', org.id).eq('provider', 'nfse').maybeSingle();
+  if (!integ || integ.status === 'disconnected') return fail('Configure a NFS-e em Integrações primeiro.');
+  const amount = Math.round(Number(str(f, 'amount', 20).replace(/\./g, '').replace(',', '.')) * 100);
+  if (!(amount > 0)) return fail('Informe o valor do serviço.');
+  const description = str(f, 'description', 2000);
+  if (description.length < 5) return fail('Descreva o serviço prestado.');
+  const doc = digits(str(f, 'doc', 20));
+  if (doc && doc.length !== 11 && doc.length !== 14) return fail('CPF/CNPJ do tomador inválido.');
+  const taker = doc ? {
+    doc, name: str(f, 'name', 300), email: str(f, 'email', 120), phone: str(f, 'phone', 20),
+    cep: digits(str(f, 'cep', 9)), cMun: digits(str(f, 'cMun', 7)), street: str(f, 'street', 200), number: str(f, 'number', 20), district: str(f, 'district', 100),
+  } : {};
+  if (doc && !taker.name) return fail('Informe o nome do tomador.');
+  const { data: inv, error } = await supabaseAdmin().from('service_invoices').insert({
+    org_id: org.id, amount_cents: amount, description, taker, created_by: user.id,
+    iss_retido: f.get('iss_retido') === 'on',
+    competencia: /^\d{4}-\d{2}-\d{2}$/.test(str(f, 'competencia', 10)) ? str(f, 'competencia', 10) : undefined,
+    contact_id: str(f, 'contact_id', 60) || null,
+  }).select('id').single();
+  if (error) return fail(error.message);
+  await serverJob(org.id, 'nfse.emit', { invoiceId: inv.id });
+  revalidatePath('/app/notas');
+  return ok('Enviando para a Sefin Nacional… a página atualiza sozinha.');
+}
+
+export async function retryServiceInvoice(f: FormData) {
   const { sb, org } = await requireOrg();
-  const { data: integ } = await sb.from('integrations').select('id,meta').eq('org_id', org.id).eq('provider', 'omie').single();
-  if (!integ) return fail('Conecte a Omie primeiro.');
-  await supabaseAdmin().from('integrations').update({ meta: { ...integ.meta, nfe: { categoryCode: str(f, 'category', 20), accountCode: str(f, 'account', 20) } } }).eq('id', integ.id);
-  return ok('Configuração fiscal salva.');
+  const id = str(f, 'id', 60);
+  const { data: inv } = await sb.from('service_invoices').select('id,status').eq('id', id).eq('org_id', org.id).single();
+  if (inv && ['rejected', 'error'].includes(inv.status)) {
+    await supabaseAdmin().from('service_invoices').update({ status: 'pending', error: null }).eq('id', id);
+    await serverJob(org.id, 'nfse.emit', { invoiceId: id });
+  }
+  revalidatePath('/app/notas');
+}
+
+export async function cancelServiceInvoice(_: any, f: FormData): Promise<Result> {
+  const { sb, org, role } = await requireOrg();
+  if (role === 'agent') return fail('Só o dono ou um administrador pode cancelar notas.');
+  const id = str(f, 'id', 60);
+  const reason = str(f, 'reason', 255);
+  if (reason.length < 15) return fail('Explique o motivo com pelo menos 15 caracteres.');
+  const { data: inv } = await sb.from('service_invoices').select('id,status').eq('id', id).eq('org_id', org.id).single();
+  if (!inv || inv.status !== 'authorized') return fail('Só é possível cancelar uma nota autorizada.');
+  const cMotivo = ['1', '2', '9'].includes(str(f, 'motivo')) ? Number(str(f, 'motivo')) : 1;
+  await serverJob(org.id, 'nfse.cancel', { invoiceId: id, cMotivo, xMotivo: reason });
+  revalidatePath('/app/notas');
+  return ok('Pedido de cancelamento enviado.');
 }
 
 export async function disconnect(f: FormData) {
@@ -234,7 +317,20 @@ export async function removeWebhook(f: FormData) {
 export async function retryNfe(f: FormData) {
   const { sb, org } = await requireOrg();
   const id = str(f, 'id', 60);
-  await sb.from('orders').update({ nfe_status: 'none', nfe_error: null }).eq('id', id).eq('org_id', org.id);
-  await job(sb, org.id, 'nfe.process', { orderId: id });
+  await sb.from('orders').update({ nfe_status: 'processing', nfe_error: null, nfe_invoice_id: null }).eq('id', id).eq('org_id', org.id);
+  await job(sb, org.id, 'nfe.process', { orderId: id, manual: true });
+  revalidatePath('/app/vendas');
+}
+
+/** Emite a NF-e de uma venda pelo Faturador do Mercado Livre (botão em Vendas). */
+export async function emitNfe(f: FormData) {
+  const { sb, org, plan } = await requireOrg();
+  if (!hasFeature(plan, 'nfe')) return;
+  const id = str(f, 'id', 60);
+  const { data: o } = await sb.from('orders').select('id,nfe_status,source,status').eq('id', id).eq('org_id', org.id).single();
+  if (o && o.source === 'mercadolivre' && o.status === 'paid' && ['none', 'error'].includes(o.nfe_status)) {
+    await sb.from('orders').update({ nfe_status: 'processing', nfe_error: null, nfe_invoice_id: null }).eq('id', id);
+    await job(sb, org.id, 'nfe.process', { orderId: id, manual: true });
+  }
   revalidatePath('/app/vendas');
 }
