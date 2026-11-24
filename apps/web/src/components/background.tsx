@@ -1,16 +1,13 @@
 'use client';
 
-// Fundo do site: degradê verde e preto com uma íris de olho realista que segue
-// o ponteiro do mouse. A textura é desenhada uma vez num <canvas> (milhares de
-// fibras, criptas, sulcos, colarete e o anel dourado em volta da pupila); pupila,
-// reflexo e anéis técnicos são camadas separadas que se movem por CSS (GPU).
-// Sem mouse (celular), a íris "olha" devagar ao redor. Respeita prefers-reduced-motion.
+// Fundo do site: um olho humano desenhado em canvas. Pálpebras, cílios e a parte
+// branca ficam desfocados ao fundo; a íris (verde com o centro âmbar, como num
+// olho real) fica nítida e se move dentro do olho, olhando para o ponteiro do
+// mouse. Sem mouse (celular), o olho olha devagar ao redor. Respeita
+// prefers-reduced-motion. Tudo é desenhado do zero (nenhuma foto de terceiros).
 import { useEffect, useRef } from 'react';
 
-const PUPIL = 0.24; // raio da pupila em relação ao raio da íris
-
-/** Pseudoaleatório determinístico (mesma íris em todo carregamento). */
-function makeRand(seed = 7) {
+function makeRand(seed: number) {
   let s = seed;
   return () => {
     s = (s * 16807) % 2147483647;
@@ -18,216 +15,398 @@ function makeRand(seed = 7) {
   };
 }
 
-function drawIris(canvas: HTMLCanvasElement) {
-  const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  const css = canvas.clientWidth || 800;
-  const N = Math.round(css * dpr);
-  canvas.width = N;
-  canvas.height = N;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return;
-  const rnd = makeRand(20261123);
-  const c = N / 2;
-  const R = N * 0.47; // raio da íris
-  const rp = R * PUPIL;
+/** Contorno do olho (amêndoa) proporcional ao palco. */
+function eyePath(ctx: CanvasRenderingContext2D, W: number, H: number) {
+  ctx.beginPath();
+  ctx.moveTo(0.08 * W, 0.53 * H); // canto interno
+  ctx.bezierCurveTo(0.24 * W, 0.18 * H, 0.66 * W, 0.08 * H, 0.93 * W, 0.47 * H); // pálpebra superior
+  ctx.bezierCurveTo(0.72 * W, 0.86 * H, 0.3 * W, 0.92 * H, 0.08 * W, 0.53 * H); // pálpebra inferior
+  ctx.closePath();
+}
+
+/** Íris realista (sem a pupila, que é desenhada a cada quadro para "respirar"). */
+function renderIris(size: number) {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = size;
+  const ctx = cv.getContext('2d')!;
+  const rnd = makeRand(424242);
+  const c = size / 2;
+  const R = size * 0.49;
+  const rp = R * 0.27;
+  const k = size / 1000;
   const P = (a: number, r: number) => [c + Math.cos(a) * r, c + Math.sin(a) * r] as const;
 
-  ctx.clearRect(0, 0, N, N);
-  ctx.save();
+  // base: âmbar no centro → oliva → verde → verde acinzentado → borda escura
+  const g = ctx.createRadialGradient(c, c, rp * 0.8, c, c, R);
+  g.addColorStop(0, '#9c5418');
+  g.addColorStop(0.1, '#c27a26');
+  g.addColorStop(0.2, '#9a8a35');
+  g.addColorStop(0.32, '#6f9a4c');
+  g.addColorStop(0.5, '#5d9a63');
+  g.addColorStop(0.7, '#5f8f78');
+  g.addColorStop(0.86, '#3b6553');
+  g.addColorStop(1, '#13241d');
+  ctx.fillStyle = g;
   ctx.beginPath();
   ctx.arc(c, c, R, 0, Math.PI * 2);
-  ctx.clip();
+  ctx.fill();
 
-  // 1) cor base: dourado perto da pupila → verde claro → verde profundo
-  const base = ctx.createRadialGradient(c, c, rp * 0.9, c, c, R);
-  base.addColorStop(0, '#b98a2e');
-  base.addColorStop(0.1, '#c9a646');
-  base.addColorStop(0.22, '#7ccf6a');
-  base.addColorStop(0.42, '#2fbf62');
-  base.addColorStop(0.68, '#138a40');
-  base.addColorStop(0.88, '#0a5a2a');
-  base.addColorStop(1, '#031a0c');
-  ctx.fillStyle = base;
-  ctx.fillRect(0, 0, N, N);
+  // manchas suaves de cor (ruído ampliado)
+  const n = document.createElement('canvas');
+  n.width = n.height = 48;
+  const nx = n.getContext('2d')!;
+  for (let y = 0; y < 48; y++)
+    for (let x = 0; x < 48; x++) {
+      const v = rnd();
+      nx.fillStyle = v > 0.6 ? `rgba(180,210,150,${v * 0.5})` : v < 0.3 ? `rgba(20,50,35,${(1 - v) * 0.5})` : `rgba(120,150,70,${v * 0.3})`;
+      nx.fillRect(x, y, 1, 1);
+    }
+  ctx.save();
+  ctx.globalCompositeOperation = 'soft-light';
+  ctx.globalAlpha = 0.55;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(n, 0, 0, size, size);
+  ctx.restore();
 
-  // 2) fibras escuras (profundidade)
-  ctx.globalCompositeOperation = 'multiply';
-  for (let i = 0; i < 900; i++) {
+  // explosão âmbar em volta da pupila (heterocromia central)
+  ctx.globalCompositeOperation = 'source-over';
+  for (let i = 0; i < 420; i++) {
     const a = rnd() * Math.PI * 2;
-    const r0 = rp * (1.02 + rnd() * 0.4);
-    const r1 = R * (0.45 + rnd() * 0.55);
-    const w = (rnd() - 0.5) * 0.08;
+    const r0 = rp * (0.95 + rnd() * 0.1);
+    const r1 = rp * (1.4 + rnd() * rnd() * 1.6);
     const [x0, y0] = P(a, r0);
-    const [xm, ym] = P(a + w, (r0 + r1) / 2);
-    const [x1, y1] = P(a + w * 0.4, r1);
-    ctx.strokeStyle = `rgba(4, 40, 18, ${0.08 + rnd() * 0.22})`;
-    ctx.lineWidth = (0.6 + rnd() * 2.4) * (N / 1000);
+    const [x1, y1] = P(a + (rnd() - 0.5) * 0.05, r1);
+    ctx.strokeStyle = rnd() > 0.35 ? `rgba(214,124,36,${0.12 + rnd() * 0.3})` : `rgba(120,58,16,${0.15 + rnd() * 0.3})`;
+    ctx.lineWidth = (1 + rnd() * 3.5) * k;
     ctx.beginPath();
     ctx.moveTo(x0, y0);
-    ctx.quadraticCurveTo(xm, ym, x1, y1);
+    ctx.lineTo(x1, y1);
     ctx.stroke();
   }
 
-  // 3) fibras claras (estroma), em várias tonalidades
-  ctx.globalCompositeOperation = 'lighter';
-  const light = ['167,243,208', '134,239,172', '217,249,157', '74,222,128', '253,230,138'];
-  for (let i = 0; i < 1600; i++) {
-    const a = rnd() * Math.PI * 2;
-    const r0 = rp * (1.04 + rnd() * 0.5);
-    const r1 = r0 + R * (0.12 + rnd() * 0.6);
-    const w = (rnd() - 0.5) * 0.1;
-    const [x0, y0] = P(a, r0);
-    const [xm, ym] = P(a + w, (r0 + r1) / 2);
-    const [x1, y1] = P(a - w * 0.3, Math.min(r1, R * 0.97));
-    const col = light[Math.floor(rnd() * (r0 < rp * 1.3 ? 5 : 4))];
-    ctx.strokeStyle = `rgba(${col}, ${0.03 + rnd() * 0.12})`;
-    ctx.lineWidth = (0.4 + rnd() * 1.6) * (N / 1000);
-    ctx.beginPath();
-    ctx.moveTo(x0, y0);
-    ctx.quadraticCurveTo(xm, ym, x1, y1);
-    ctx.stroke();
-  }
+  // fibras do estroma: finas, onduladas, claras e escuras
+  const fiber = (count: number, light: boolean) => {
+    ctx.globalCompositeOperation = light ? 'screen' : 'multiply';
+    for (let i = 0; i < count; i++) {
+      const a = rnd() * Math.PI * 2;
+      const r0 = rp * (1.05 + rnd() * 0.6);
+      const r1 = Math.min(R * 0.97, r0 + R * (0.2 + rnd() * 0.65));
+      const w1 = (rnd() - 0.5) * 0.07, w2 = (rnd() - 0.5) * 0.07;
+      const [x0, y0] = P(a, r0);
+      const [xa, ya] = P(a + w1, r0 + (r1 - r0) * 0.33);
+      const [xb, yb] = P(a + w2, r0 + (r1 - r0) * 0.66);
+      const [x1, y1] = P(a + (w1 + w2) / 3, r1);
+      if (light) {
+        const tone = ['214,236,200', '190,224,190', '232,240,214', '170,214,180'][Math.floor(rnd() * 4)];
+        ctx.strokeStyle = `rgba(${tone},${0.05 + rnd() * 0.16})`;
+      } else {
+        ctx.strokeStyle = `rgba(18,48,34,${0.06 + rnd() * 0.2})`;
+      }
+      ctx.lineWidth = (0.35 + rnd() * 1.3) * k;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.bezierCurveTo(xa, ya, xb, yb, x1, y1);
+      ctx.stroke();
+    }
+  };
+  fiber(1800, false);
+  fiber(3600, true);
 
-  // 4) criptas (pequenas cavidades alongadas)
+  // criptas discretas
   ctx.globalCompositeOperation = 'multiply';
-  ctx.filter = `blur(${1.5 * (N / 1000)}px)`;
-  for (let i = 0; i < 70; i++) {
+  ctx.filter = `blur(${1.2 * k}px)`;
+  for (let i = 0; i < 55; i++) {
     const a = rnd() * Math.PI * 2;
-    const r = R * (0.42 + rnd() * 0.4);
-    const [x, y] = P(a, r);
+    const [x, y] = P(a, R * (0.45 + rnd() * 0.38));
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(a);
-    ctx.fillStyle = `rgba(2, 30, 12, ${0.1 + rnd() * 0.22})`;
+    ctx.rotate(a + (rnd() - 0.5) * 0.4);
+    ctx.fillStyle = `rgba(20,45,32,${0.12 + rnd() * 0.2})`;
     ctx.beginPath();
-    ctx.ellipse(0, 0, R * (0.015 + rnd() * 0.06), R * (0.005 + rnd() * 0.016), (rnd() - 0.5) * 0.4, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, R * (0.02 + rnd() * 0.05), R * (0.006 + rnd() * 0.014), 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }
   ctx.filter = 'none';
 
-  // 5) sulcos de contração (anéis concêntricos interrompidos)
-  for (const k of [0.7, 0.79, 0.87]) {
-    let a = rnd() * Math.PI * 2;
-    const end = a + Math.PI * 2;
-    while (a < end) {
-      const len = 0.15 + rnd() * 0.5;
-      ctx.strokeStyle = `rgba(3, 32, 14, ${0.25 + rnd() * 0.3})`;
-      ctx.lineWidth = (1 + rnd() * 2) * (N / 1000);
-      ctx.beginPath();
-      ctx.arc(c, c, R * (k + (rnd() - 0.5) * 0.01), a, a + len);
-      ctx.stroke();
-      a += len + 0.05 + rnd() * 0.25;
-    }
-  }
-
-  // 6) colarete: anel irregular claro entre a zona da pupila e o resto
-  ctx.globalCompositeOperation = 'source-over';
-  const rc = rp * 1.85;
+  // colarete irregular
+  ctx.globalCompositeOperation = 'screen';
   ctx.beginPath();
+  const rc = rp * 1.95;
   for (let d = 0; d <= 360; d += 2) {
     const a = (d * Math.PI) / 180;
-    const rr = rc * (1 + Math.sin(a * 7 + 1.3) * 0.03 + Math.sin(a * 13) * 0.025 + (rnd() - 0.5) * 0.03);
+    const rr = rc * (1 + Math.sin(a * 9 + 0.7) * 0.035 + Math.sin(a * 17) * 0.02 + (rnd() - 0.5) * 0.04);
     const [x, y] = P(a, rr);
-    d === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    d ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
   }
   ctx.closePath();
-  ctx.strokeStyle = 'rgba(236, 252, 203, 0.45)';
-  ctx.lineWidth = 3.2 * (N / 1000);
-  ctx.shadowColor = 'rgba(190, 242, 100, 0.6)';
-  ctx.shadowBlur = 8 * (N / 1000);
+  ctx.strokeStyle = 'rgba(236,220,170,0.22)';
+  ctx.lineWidth = 3 * k;
   ctx.stroke();
-  ctx.shadowBlur = 0;
 
-  // 7) pintinhas claras (flecks)
-  for (let i = 0; i < 46; i++) {
-    const a = rnd() * Math.PI * 2;
-    const r = R * (0.35 + rnd() * 0.5);
-    const [x, y] = P(a, r);
-    ctx.fillStyle = `rgba(254, 243, 199, ${0.12 + rnd() * 0.25})`;
+  // pintinhas claras
+  ctx.globalCompositeOperation = 'source-over';
+  for (let i = 0; i < 70; i++) {
+    const [x, y] = P(rnd() * Math.PI * 2, R * (0.4 + rnd() * 0.5));
+    ctx.fillStyle = `rgba(240,236,205,${0.08 + rnd() * 0.18})`;
     ctx.beginPath();
-    ctx.arc(x, y, (0.8 + rnd() * 2.2) * (N / 1000), 0, Math.PI * 2);
+    ctx.arc(x, y, (0.6 + rnd() * 1.8) * k, 0, Math.PI * 2);
     ctx.fill();
   }
 
-  // 8) borda da pupila (ruff) escura e irregular
+  // anel límbico escuro
+  const limb = ctx.createRadialGradient(c, c, R * 0.8, c, c, R);
+  limb.addColorStop(0, 'rgba(8,22,16,0)');
+  limb.addColorStop(0.7, 'rgba(8,22,16,0.55)');
+  limb.addColorStop(1, 'rgba(4,12,9,0.95)');
+  ctx.fillStyle = limb;
   ctx.beginPath();
-  for (let d = 0; d <= 360; d += 1.5) {
-    const a = (d * Math.PI) / 180;
-    const [x, y] = P(a, rp * (1.06 + (rnd() - 0.5) * 0.05));
-    d === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  ctx.arc(c, c, R, 0, Math.PI * 2);
+  ctx.fill();
+
+  // granulado
+  for (let i = 0; i < 14000; i++) {
+    const [x, y] = P(rnd() * Math.PI * 2, Math.sqrt(rnd()) * R);
+    ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.06)';
+    ctx.fillRect(x, y, k, k);
   }
-  ctx.closePath();
-  ctx.strokeStyle = 'rgba(46, 24, 4, 0.85)';
-  ctx.lineWidth = 5 * (N / 1000);
+
+  // borda suave (sem serrilhado)
+  ctx.globalCompositeOperation = 'destination-in';
+  const edge = ctx.createRadialGradient(c, c, R * 0.965, c, c, R);
+  edge.addColorStop(0, 'rgba(0,0,0,1)');
+  edge.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = edge;
+  ctx.fillRect(0, 0, size, size);
+  return cv;
+}
+
+/** Olho em volta (pele, branco do olho, cílios), já desfocado e escurecido. */
+function renderSurround(W: number, H: number) {
+  const raw = document.createElement('canvas');
+  raw.width = W;
+  raw.height = H;
+  const ctx = raw.getContext('2d')!;
+  const rnd = makeRand(777);
+  const k = W / 1600;
+
+  // pele em penumbra
+  const skin = ctx.createRadialGradient(0.5 * W, 0.45 * H, 0, 0.5 * W, 0.5 * H, 0.75 * W);
+  skin.addColorStop(0, '#6b4632');
+  skin.addColorStop(0.35, '#4a2e20');
+  skin.addColorStop(0.7, '#1f130c');
+  skin.addColorStop(1, '#050302');
+  ctx.fillStyle = skin;
+  ctx.fillRect(0, 0, W, H);
+
+  // vinco da pálpebra superior
+  ctx.strokeStyle = 'rgba(30,16,10,0.55)';
+  ctx.lineWidth = 10 * k;
+  ctx.beginPath();
+  ctx.moveTo(0.12 * W, 0.42 * H);
+  ctx.bezierCurveTo(0.3 * W, 0.02 * H, 0.7 * W, -0.04 * H, 0.95 * W, 0.36 * H);
   ctx.stroke();
 
-  // 9) anel límbico (borda escura) e granulado fino
-  const limb = ctx.createRadialGradient(c, c, R * 0.82, c, c, R);
-  limb.addColorStop(0, 'rgba(0,0,0,0)');
-  limb.addColorStop(0.75, 'rgba(1,12,5,0.55)');
-  limb.addColorStop(1, 'rgba(0,6,2,0.95)');
-  ctx.fillStyle = limb;
-  ctx.fillRect(0, 0, N, N);
-  for (let i = 0; i < 9000; i++) {
-    const a = rnd() * Math.PI * 2;
-    const r = Math.sqrt(rnd()) * R;
-    const [x, y] = P(a, r);
-    ctx.fillStyle = rnd() > 0.5 ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.05)';
-    ctx.fillRect(x, y, N / 1000, N / 1000);
+  // branco do olho
+  ctx.save();
+  eyePath(ctx, W, H);
+  ctx.clip();
+  const scl = ctx.createRadialGradient(0.52 * W, 0.55 * H, 0, 0.52 * W, 0.5 * H, 0.48 * W);
+  scl.addColorStop(0, '#f3efe9');
+  scl.addColorStop(0.35, '#e2d9d0');
+  scl.addColorStop(0.7, '#bfa79b');
+  scl.addColorStop(1, '#7a5a4e');
+  ctx.fillStyle = scl;
+  ctx.fillRect(0, 0, W, H);
+  // carúncula (canto interno rosado)
+  const car = ctx.createRadialGradient(0.1 * W, 0.53 * H, 0, 0.1 * W, 0.53 * H, 0.08 * W);
+  car.addColorStop(0, 'rgba(196,110,104,0.95)');
+  car.addColorStop(1, 'rgba(196,110,104,0)');
+  ctx.fillStyle = car;
+  ctx.fillRect(0, 0, W, H);
+  // veias finas
+  for (let i = 0; i < 22; i++) {
+    const left = rnd() > 0.5;
+    let x = left ? 0.12 * W + rnd() * 0.08 * W : 0.88 * W - rnd() * 0.08 * W;
+    let y = 0.35 * H + rnd() * 0.35 * H;
+    ctx.strokeStyle = `rgba(170,60,55,${0.12 + rnd() * 0.25})`;
+    ctx.lineWidth = (0.8 + rnd() * 1.6) * k;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    for (let s = 0; s < 6; s++) {
+      x += (left ? 1 : -1) * (12 + rnd() * 26) * k;
+      y += (rnd() - 0.5) * 30 * k;
+      ctx.lineTo(x, y);
+    }
+    ctx.stroke();
   }
+  // sombra da pálpebra superior sobre o olho
+  const lid = ctx.createLinearGradient(0, 0.1 * H, 0, 0.55 * H);
+  lid.addColorStop(0, 'rgba(40,20,12,0.85)');
+  lid.addColorStop(1, 'rgba(40,20,12,0)');
+  ctx.fillStyle = lid;
+  ctx.fillRect(0, 0, W, H);
   ctx.restore();
+
+  // margens das pálpebras
+  eyePath(ctx, W, H);
+  ctx.strokeStyle = 'rgba(70,30,24,0.9)';
+  ctx.lineWidth = 9 * k;
+  ctx.stroke();
+
+  // cílios superiores e inferiores
+  const lash = (t: number, upper: boolean) => {
+    const B = (p0: number, p1: number, p2: number, p3: number) => (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t * t * p2 + t ** 3 * p3;
+    const x = upper ? B(0.08, 0.24, 0.66, 0.93) * W : B(0.93, 0.72, 0.3, 0.08) * W;
+    const y = upper ? B(0.53, 0.18, 0.08, 0.47) * H : B(0.47, 0.86, 0.92, 0.53) * H;
+    const len = (upper ? 70 + rnd() * 90 : 25 + rnd() * 35) * k * (upper ? Math.sin(Math.PI * Math.min(1, t * 1.1)) * 0.8 + 0.3 : 1);
+    const dir = upper ? -1 : 1;
+    const curl = (upper ? (t - 0.35) * 1.4 : (0.5 - t) * 0.8) + (rnd() - 0.5) * 0.3;
+    ctx.strokeStyle = `rgba(14,8,5,${0.6 + rnd() * 0.35})`;
+    ctx.lineWidth = (upper ? 2.4 + rnd() * 2 : 1.4 + rnd()) * k;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + curl * len * 0.4, y + dir * len * 0.7, x + curl * len, y + dir * len * (0.9 + rnd() * 0.2));
+    ctx.stroke();
+  };
+  for (let i = 0; i < 170; i++) lash(0.04 + rnd() * 0.94, true);
+  for (let i = 0; i < 80; i++) lash(0.08 + rnd() * 0.84, false);
+
+  // desfoque e penumbra
+  const out = document.createElement('canvas');
+  out.width = W;
+  out.height = H;
+  const o = out.getContext('2d')!;
+  o.filter = `blur(${Math.max(4, 7 * k)}px) brightness(0.62) saturate(0.85)`;
+  o.drawImage(raw, 0, 0);
+  o.filter = 'none';
+  const v = o.createRadialGradient(0.5 * W, 0.5 * H, 0.25 * W, 0.5 * W, 0.5 * H, 0.62 * W);
+  v.addColorStop(0, 'rgba(3,5,3,0)');
+  v.addColorStop(1, 'rgba(3,5,3,1)');
+  o.fillStyle = v;
+  o.fillRect(0, 0, W, H);
+  return out;
 }
 
 export function TechBackground() {
-  const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pupilRef = useRef<HTMLDivElement>(null);
-  const glintRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (canvas) drawIris(canvas);
-    const onResize = () => canvas && drawIris(canvas);
-    window.addEventListener('resize', onResize);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let W = 0, H = 0, irisR = 0;
+    let surround: HTMLCanvasElement | null = null;
+    let iris: HTMLCanvasElement | null = null;
 
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      return () => window.removeEventListener('resize', onResize);
-    }
+    const setup = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      W = Math.round(canvas.clientWidth * dpr);
+      H = Math.round(canvas.clientHeight * dpr);
+      if (!W || !H) return;
+      canvas.width = W;
+      canvas.height = H;
+      surround = renderSurround(W, H);
+      irisR = H * 0.3;
+      iris = renderIris(Math.round(irisR * 2));
+    };
 
-    let tx = 0, ty = 0, x = 0, y = 0, raf = 0, last = -1e9;
+    let tx = 0, ty = 0, x = 0, y = 0, last = -1e9, raf = 0;
+    const t0 = performance.now();
+    const draw = (t: number) => {
+      if (!W || !surround || !iris) return;
+      ctx.clearRect(0, 0, W, H);
+      ctx.drawImage(surround, 0, 0);
+      const cx = 0.515 * W + x * W * 0.13;
+      const cy = 0.5 * H + y * H * 0.09;
+      ctx.save();
+      eyePath(ctx, W, H);
+      ctx.clip();
+      ctx.drawImage(iris, cx - irisR, cy - irisR);
+      // volume da córnea: a parte de baixo da íris fica um pouco mais escura
+      const vol = ctx.createRadialGradient(cx - irisR * 0.2, cy - irisR * 0.35, irisR * 0.2, cx, cy, irisR * 1.05);
+      vol.addColorStop(0, 'rgba(255,255,255,0.05)');
+      vol.addColorStop(0.7, 'rgba(0,0,0,0)');
+      vol.addColorStop(1, 'rgba(0,0,0,0.35)');
+      ctx.fillStyle = vol;
+      ctx.beginPath();
+      ctx.arc(cx, cy, irisR, 0, Math.PI * 2);
+      ctx.fill();
+      // pupila com "respiração"
+      const breathe = reduce ? 1 : 1 + Math.sin((t - t0) / 1300) * 0.05;
+      const rp = irisR * 0.27 * breathe;
+      const pg = ctx.createRadialGradient(cx, cy, rp * 0.7, cx, cy, rp * 1.08);
+      pg.addColorStop(0, '#020202');
+      pg.addColorStop(1, 'rgba(2,2,2,0)');
+      ctx.fillStyle = pg;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rp * 1.08, 0, Math.PI * 2);
+      ctx.fill();
+      // anel técnico discreto (toque de IA)
+      ctx.strokeStyle = 'rgba(74,222,128,0.28)';
+      ctx.lineWidth = Math.max(1, W / 1600);
+      ctx.setLineDash([irisR * 0.08, irisR * 0.05]);
+      ctx.lineDashOffset = reduce ? 0 : -(t - t0) / 40;
+      ctx.beginPath();
+      ctx.arc(cx, cy, irisR * 1.07, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // sombra da pálpebra superior e dos cílios sobre a íris
+      const sh = ctx.createLinearGradient(0, 0.12 * H, 0, 0.5 * H);
+      sh.addColorStop(0, 'rgba(20,10,6,0.9)');
+      sh.addColorStop(0.55, 'rgba(20,10,6,0.25)');
+      sh.addColorStop(1, 'rgba(20,10,6,0)');
+      ctx.fillStyle = sh;
+      ctx.fillRect(0, 0, W, H);
+      // reflexo da luz na córnea (anda junto com o olho)
+      const hx = cx - irisR * 0.38, hy = cy - irisR * 0.42;
+      const hl = ctx.createRadialGradient(hx, hy, 0, hx, hy, irisR * 0.2);
+      hl.addColorStop(0, 'rgba(255,255,255,0.92)');
+      hl.addColorStop(0.4, 'rgba(255,255,255,0.35)');
+      hl.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = hl;
+      ctx.beginPath();
+      ctx.ellipse(hx, hy, irisR * 0.2, irisR * 0.13, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    };
+
     const onMove = (e: PointerEvent) => {
-      const el = wrapRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const cx = r.left + r.width / 2 - x, cy = r.top + r.height / 2 - y;
-      const dx = e.clientX - cx, dy = e.clientY - cy;
-      const dist = Math.hypot(dx, dy) || 1;
-      const max = r.width * 0.07;
-      const pull = Math.min(1, dist / (Math.min(window.innerWidth, window.innerHeight) * 0.55));
-      tx = (dx / dist) * max * pull;
-      ty = (dy / dist) * max * pull;
+      const r = canvas.getBoundingClientRect();
+      const dx = (e.clientX - (r.left + r.width * 0.515)) / (window.innerWidth * 0.5);
+      const dy = (e.clientY - (r.top + r.height * 0.5)) / (window.innerHeight * 0.5);
+      tx = Math.max(-1, Math.min(1, dx));
+      ty = Math.max(-1, Math.min(1, dy));
       last = performance.now();
     };
-    const tick = (t: number) => {
-      const el = wrapRef.current;
-      if (el && t - last > 4000) {
-        const max = el.clientWidth * 0.05;
-        tx = Math.cos(t / 3400) * max;
-        ty = Math.sin(t / 4700) * max * 0.6;
+    const loop = (t: number) => {
+      if (t - last > 4000) {
+        tx = Math.sin(t / 3100) * 0.55;
+        ty = Math.sin(t / 4300 + 1) * 0.35;
       }
-      x += (tx - x) * 0.08;
-      y += (ty - y) * 0.08;
-      if (el) {
-        const w = el.clientWidth || 1;
-        el.style.transform = `translate3d(${x.toFixed(2)}px, ${y.toFixed(2)}px, 0) rotateY(${((x / w) * 40).toFixed(2)}deg) rotateX(${((-y / w) * 40).toFixed(2)}deg)`;
-      }
-      if (pupilRef.current) pupilRef.current.style.translate = `${(x * 0.22).toFixed(2)}px ${(y * 0.22).toFixed(2)}px`;
-      if (glintRef.current) glintRef.current.style.translate = `${(-x * 0.12).toFixed(2)}px ${(-y * 0.12).toFixed(2)}px`;
-      raf = requestAnimationFrame(tick);
+      x += (tx - x) * 0.09;
+      y += (ty - y) * 0.09;
+      draw(t);
+      raf = requestAnimationFrame(loop);
     };
-    window.addEventListener('pointermove', onMove, { passive: true });
-    raf = requestAnimationFrame(tick);
+
+    setup();
+    let resizeTimer: ReturnType<typeof setTimeout> | undefined;
+    const onResize = () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        setup();
+        draw(performance.now());
+      }, 150);
+    };
+    window.addEventListener('resize', onResize);
+    if (reduce) draw(performance.now());
+    else {
+      window.addEventListener('pointermove', onMove, { passive: true });
+      raf = requestAnimationFrame(loop);
+    }
     return () => {
       window.removeEventListener('resize', onResize);
       window.removeEventListener('pointermove', onMove);
@@ -238,31 +417,7 @@ export function TechBackground() {
   return (
     <div className="bg-tech" aria-hidden>
       <div className="bg-gradient" />
-      <div className="iris-stage">
-        <div className="iris-wrap" ref={wrapRef}>
-          <div className="iris-halo" />
-          {/* anéis técnicos */}
-          <svg className="iris-ring iris-spin" viewBox="-500 -500 1000 1000">
-            {Array.from({ length: 144 }, (_, i) => {
-              const a = (i / 144) * Math.PI * 2;
-              const long = i % 12 === 0;
-              const r0 = 400, r1 = long ? 424 : 410;
-              return (
-                <line key={i} x1={Math.cos(a) * r0} y1={Math.sin(a) * r0} x2={Math.cos(a) * r1} y2={Math.sin(a) * r1}
-                  stroke={long ? '#4ade80' : '#22c55e'} strokeOpacity={long ? 0.75 : 0.3} strokeWidth={long ? 2.2 : 1.1} />
-              );
-            })}
-          </svg>
-          <svg className="iris-ring iris-spin-rev" viewBox="-500 -500 1000 1000" fill="none">
-            <circle r="446" stroke="#22d3ee" strokeOpacity="0.4" strokeWidth="1.4" strokeDasharray="220 70 24 70" />
-            <circle r="468" stroke="#4ade80" strokeOpacity="0.16" strokeWidth="1" strokeDasharray="3 12" />
-          </svg>
-          <canvas ref={canvasRef} className="iris-canvas" />
-          <div className="iris-pupil-wrap" ref={pupilRef}><div className="iris-pupil" /></div>
-          <div className="iris-glint" ref={glintRef} />
-          <div className="iris-gloss" />
-        </div>
-      </div>
+      <canvas ref={canvasRef} className="eye-canvas" />
       <div className="bg-vignette" />
     </div>
   );

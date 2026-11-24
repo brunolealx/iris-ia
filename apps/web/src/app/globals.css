@@ -59,26 +59,13 @@ a:hover { text-decoration: underline; }
   #030503; }
 .bg-vignette { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(3, 5, 3, 0.92) 0%, rgba(3, 5, 3, 0.55) 38%, rgba(3, 5, 3, 0.08) 70%, rgba(3, 5, 3, 0.25) 100%); }
 
-/* Íris */
-.iris-stage { position: absolute; top: 50%; right: max(-8vmin, -80px); width: min(92vmin, 920px); aspect-ratio: 1; translate: 0 -50%; perspective: 1200px; }
-.iris-wrap { position: absolute; inset: 0; transform-style: preserve-3d; will-change: transform; }
-.iris-wrap > * { position: absolute; }
-.iris-halo { inset: -12%; border-radius: 50%; background: radial-gradient(circle, rgba(34, 197, 94, 0.22) 38%, rgba(34, 197, 94, 0.06) 55%, transparent 70%); }
-.iris-ring { inset: 0; width: 100%; height: 100%; }
-.iris-canvas { inset: 3%; width: 94%; height: 94%; border-radius: 50%; }
-.iris-pupil-wrap { inset: 0; display: grid; place-items: center; will-change: translate; }
-.iris-pupil { width: 21.5%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #000 0 62%, #020603 78%, rgba(2, 6, 3, 0) 100%); box-shadow: 0 0 40px rgba(0, 0, 0, 0.6); animation: iris-breathe 8s ease-in-out infinite; }
-.iris-glint { left: 36%; top: 33%; width: 9%; height: 6%; border-radius: 50%; background: radial-gradient(ellipse, rgba(255, 255, 255, 0.95) 0 35%, rgba(255, 255, 255, 0.35) 60%, transparent 75%); rotate: -28deg; will-change: translate; }
-.iris-gloss { inset: 3%; border-radius: 50%; background: radial-gradient(60% 45% at 35% 22%, rgba(255, 255, 255, 0.10), transparent 60%), radial-gradient(circle at 50% 50%, transparent 68%, rgba(0, 0, 0, 0.35) 100%); pointer-events: none; }
-.iris-spin { animation: iris-rot 100s linear infinite; }
-.iris-spin-rev { animation: iris-rot 150s linear infinite reverse; }
-@keyframes iris-rot { to { transform: rotate(360deg); } }
-@keyframes iris-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.09); } }
+/* Olho (canvas): fundo fixo; a íris segue o mouse */
+.eye-canvas { position: absolute; top: 50%; left: 58%; width: min(150vmin, 1500px); aspect-ratio: 16 / 9; translate: -50% -50%;
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); }
 @media (max-width: 900px) {
-  .iris-stage { right: 50%; translate: 50% 0; top: 4vh; width: min(120vw, 620px); opacity: 0.55; }
-  .bg-vignette { background: linear-gradient(180deg, rgba(3, 5, 3, 0.25) 0%, rgba(3, 5, 3, 0.85) 60%); }
+  .eye-canvas { left: 50%; top: 22vh; width: 170vw; opacity: 0.6; }
+  .bg-vignette { background: linear-gradient(180deg, rgba(3, 5, 3, 0.2) 0%, rgba(3, 5, 3, 0.88) 62%); }
 }
-@media (prefers-reduced-motion: reduce) { .iris-spin, .iris-spin-rev, .iris-pupil { animation: none; } }
 
 /* ===== Marca ===== */
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 19px; letter-spacing: -0.03em; color: var(--iris-text); }
