@@ -59,12 +59,14 @@ a:hover { text-decoration: underline; }
   #030503; }
 .bg-vignette { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(3, 5, 3, 0.92) 0%, rgba(3, 5, 3, 0.55) 38%, rgba(3, 5, 3, 0.08) 70%, rgba(3, 5, 3, 0.25) 100%); }
 
-/* Olho (canvas): fundo fixo; a íris segue o mouse */
-.eye-canvas { position: absolute; top: 50%; left: 58%; width: min(150vmin, 1500px); aspect-ratio: 16 / 9; translate: -50% -50%;
-  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, #000 55%, transparent 100%); }
+/* Arte de íris (SVG estático) */
+.iris-art { position: absolute; top: 50%; left: 64%; width: min(120vmin, 1100px); aspect-ratio: 1; translate: -50% -50%; opacity: 0.62; }
+.iris-ring { animation: iris-rot 120s linear infinite; }
+@keyframes iris-rot { to { rotate: 360deg; } }
+@media (prefers-reduced-motion: reduce) { .iris-ring { animation: none; } }
 @media (max-width: 900px) {
-  .eye-canvas { left: 50%; top: 22vh; width: 170vw; opacity: 0.6; }
-  .bg-vignette { background: linear-gradient(180deg, rgba(3, 5, 3, 0.2) 0%, rgba(3, 5, 3, 0.88) 62%); }
+  .iris-art { left: 50%; top: 30vh; width: 135vw; opacity: 0.42; }
+  .bg-vignette { background: linear-gradient(180deg, rgba(3, 5, 3, 0.15) 0%, rgba(3, 5, 3, 0.55) 45%, rgba(3, 5, 3, 0.9) 75%); }
 }
 
 /* ===== Marca ===== */
