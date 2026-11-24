@@ -1,5 +1,5 @@
 // Ícones de linha próprios da Iris (24px, traço 1.75). Sem emojis.
-import type { SVGProps } from 'react';
+import { useId, type SVGProps } from 'react';
 
 type P = SVGProps<SVGSVGElement> & { size?: number };
 
@@ -70,14 +70,28 @@ export const IconFactory = (p: P) => (
   <svg {...base(p)}><path d="M3 20V10l5 3V10l5 3V5h4v15z" /><path d="M7 17h2M11.5 17h2" /></svg>
 );
 
-/** Marca da Iris: arco-íris estilizado em três faixas (verde, ciano, azul). */
+/** Marca da Iris: íris de olho verde com anel técnico. Mesmo desenho do favicon (app/icon.svg). */
 export function IrisMark({ size = 26 }: { size?: number }) {
+  const id = useId().replace(/:/g, '');
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
-      <rect width="32" height="32" rx="9" fill="#0b130d" />
-      <path d="M7 22a9 9 0 0 1 18 0" fill="none" stroke="#22c55e" strokeWidth="3.2" strokeLinecap="round" />
-      <path d="M11 22a5 5 0 0 1 10 0" fill="none" stroke="#25d0e8" strokeWidth="3.2" strokeLinecap="round" />
-      <circle cx="16" cy="22" r="1.9" fill="#ffffff" />
+      <defs>
+        <radialGradient id={id} cx="16" cy="16" r="12" gradientUnits="userSpaceOnUse">
+          <stop offset="0.3" stopColor="#d4b04f"/>
+          <stop offset="0.45" stopColor="#7fd36b"/>
+          <stop offset="0.75" stopColor="#16a34a"/>
+          <stop offset="1" stopColor="#052e16"/>
+        </radialGradient>
+      </defs>
+      <rect width="32" height="32" rx="8" fill="#050805"/>
+      <path d="M29.40 16.00L30.60 16.00 M28.94 19.47L29.52 19.62 M27.60 22.70L28.12 23.00 M25.48 25.48L25.90 25.90 M22.70 27.60L23.00 28.12 M19.47 28.94L19.62 29.52 M16.00 29.40L16.00 30.60 M12.53 28.94L12.38 29.52 M9.30 27.60L9.00 28.12 M6.52 25.48L6.10 25.90 M4.40 22.70L3.88 23.00 M3.06 19.47L2.48 19.62 M2.60 16.00L1.40 16.00 M3.06 12.53L2.48 12.38 M4.40 9.30L3.88 9.00 M6.52 6.52L6.10 6.10 M9.30 4.40L9.00 3.88 M12.53 3.06L12.38 2.48 M16.00 2.60L16.00 1.40 M19.47 3.06L19.62 2.48 M22.70 4.40L23.00 3.88 M25.48 6.52L25.90 6.10 M27.60 9.30L28.12 9.00 M28.94 12.53L29.52 12.38" stroke="#4ade80" strokeOpacity="0.55" strokeWidth="0.7" strokeLinecap="round"/>
+      <circle cx="16" cy="16" r="11.6" fill={`url(#${id})`}/>
+      <path d="M20.60 15.86L27.19 15.66 M20.49 16.98L25.97 18.17 M20.37 17.44L25.69 19.20 M19.89 18.46L25.47 21.98 M19.61 18.85L24.01 22.32 M18.81 19.64L22.24 24.07 M18.42 19.91L21.89 25.53 M17.40 20.38L19.10 25.72 M16.93 20.50L18.07 25.99 M15.82 20.60L15.55 27.19 M15.34 20.55L14.53 26.09 M14.26 20.26L12.13 25.44 M13.82 20.05L10.69 25.86 M12.90 19.40L9.14 23.55 M12.57 19.06L8.39 22.79 M11.93 18.14L6.08 21.21 M11.73 17.70L6.52 19.77 M11.44 16.62L5.89 17.37 M11.40 16.14L4.81 16.34 M11.51 15.02L6.03 13.83 M11.63 14.56L6.31 12.80 M12.11 13.54L6.53 10.02 M12.39 13.15L7.99 9.68 M13.19 12.36L9.76 7.93 M13.58 12.09L10.11 6.47 M14.60 11.62L12.90 6.28 M15.07 11.50L13.93 6.01 M16.18 11.40L16.45 4.81 M16.66 11.45L17.47 5.91 M17.74 11.74L19.87 6.56 M18.18 11.95L21.31 6.14 M19.10 12.60L22.86 8.45 M19.43 12.94L23.61 9.21 M20.07 13.86L25.92 10.79 M20.27 14.30L25.48 12.23 M20.56 15.38L26.11 14.63" stroke="#d9f99d" strokeOpacity="0.35" strokeWidth="0.45" strokeLinecap="round"/>
+      <circle cx="16" cy="16" r="11.6" fill="none" stroke="#021a0b" strokeWidth="1.1"/>
+      <circle cx="16" cy="16" r="7.3" fill="none" stroke="#ecfccb" strokeOpacity="0.35" strokeWidth="0.6"/>
+      <circle cx="16" cy="16" r="4.4" fill="#000"/>
+      <ellipse cx="13.6" cy="13.2" rx="1.6" ry="1.1" fill="#fff" transform="rotate(-28 13.6 13.2)"/>
+      <circle cx="18.2" cy="17.8" r="0.55" fill="#fff" fillOpacity="0.6"/>
     </svg>
   );
 }

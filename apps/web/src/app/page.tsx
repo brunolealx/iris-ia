@@ -57,6 +57,18 @@ export default async function Landing() {
           </div>
         </div>
 
+      </section>
+
+      <section className="section how">
+        <div className="section-head">
+          <h2>Atendimento que entende o seu estoque</h2>
+          <p>A IA consulta o catálogo, responde em segundos e deixa com você o que precisa de decisão.</p>
+          <ol className="steps">
+            <li><span className="num">1</span><div><b>O cliente pergunta</b><p>No WhatsApp ou no anúncio do Mercado Livre.</p></div></li>
+            <li><span className="num">2</span><div><b>A Iris consulta seus dados</b><p>Preço, estoque, prazo e regras da sua loja.</p></div></li>
+            <li><span className="num">3</span><div><b>Responde ou pede sua aprovação</b><p>Casos sensíveis sempre passam por você.</p></div></li>
+          </ol>
+        </div>
         {/* Prévia ilustrativa de uma conversa */}
         <div className="preview" aria-label="Exemplo ilustrativo de atendimento">
           <div className="preview-head">

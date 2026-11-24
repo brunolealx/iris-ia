@@ -53,12 +53,32 @@ a:hover { text-decoration: underline; }
 
 /* ===== Fundo animado (landing e login) ===== */
 .bg-tech { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
-.bg-tech svg { width: 100%; height: 100%; display: block; }
-.bg-drift { animation: iris-drift 26s ease-in-out infinite alternate; transform-origin: 30% 20%; }
-.bg-trail { stroke-dasharray: 140 1700; animation: iris-trail linear infinite; }
-@keyframes iris-drift { from { transform: translate(0, 0) scale(1); } to { transform: translate(60px, 40px) scale(1.08); } }
-@keyframes iris-trail { from { stroke-dashoffset: 1840; } to { stroke-dashoffset: 0; } }
-@media (prefers-reduced-motion: reduce) { .bg-drift, .bg-trail { animation: none; } .bg-trail { opacity: 0; } }
+.bg-gradient { position: absolute; inset: 0; background:
+  radial-gradient(70% 60% at 8% 0%, rgba(22, 163, 74, 0.5), rgba(6, 78, 42, 0.18) 45%, transparent 70%),
+  radial-gradient(45% 55% at 72% 50%, rgba(15, 118, 110, 0.32), transparent 70%),
+  #030503; }
+.bg-vignette { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(3, 5, 3, 0.92) 0%, rgba(3, 5, 3, 0.55) 38%, rgba(3, 5, 3, 0.08) 70%, rgba(3, 5, 3, 0.25) 100%); }
+
+/* Íris */
+.iris-stage { position: absolute; top: 50%; right: max(-8vmin, -80px); width: min(92vmin, 920px); aspect-ratio: 1; translate: 0 -50%; perspective: 1200px; }
+.iris-wrap { position: absolute; inset: 0; transform-style: preserve-3d; will-change: transform; }
+.iris-wrap > * { position: absolute; }
+.iris-halo { inset: -12%; border-radius: 50%; background: radial-gradient(circle, rgba(34, 197, 94, 0.22) 38%, rgba(34, 197, 94, 0.06) 55%, transparent 70%); }
+.iris-ring { inset: 0; width: 100%; height: 100%; }
+.iris-canvas { inset: 3%; width: 94%; height: 94%; border-radius: 50%; }
+.iris-pupil-wrap { inset: 0; display: grid; place-items: center; will-change: translate; }
+.iris-pupil { width: 21.5%; aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #000 0 62%, #020603 78%, rgba(2, 6, 3, 0) 100%); box-shadow: 0 0 40px rgba(0, 0, 0, 0.6); animation: iris-breathe 8s ease-in-out infinite; }
+.iris-glint { left: 36%; top: 33%; width: 9%; height: 6%; border-radius: 50%; background: radial-gradient(ellipse, rgba(255, 255, 255, 0.95) 0 35%, rgba(255, 255, 255, 0.35) 60%, transparent 75%); rotate: -28deg; will-change: translate; }
+.iris-gloss { inset: 3%; border-radius: 50%; background: radial-gradient(60% 45% at 35% 22%, rgba(255, 255, 255, 0.10), transparent 60%), radial-gradient(circle at 50% 50%, transparent 68%, rgba(0, 0, 0, 0.35) 100%); pointer-events: none; }
+.iris-spin { animation: iris-rot 100s linear infinite; }
+.iris-spin-rev { animation: iris-rot 150s linear infinite reverse; }
+@keyframes iris-rot { to { transform: rotate(360deg); } }
+@keyframes iris-breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.09); } }
+@media (max-width: 900px) {
+  .iris-stage { right: 50%; translate: 50% 0; top: 4vh; width: min(120vw, 620px); opacity: 0.55; }
+  .bg-vignette { background: linear-gradient(180deg, rgba(3, 5, 3, 0.25) 0%, rgba(3, 5, 3, 0.85) 60%); }
+}
+@media (prefers-reduced-motion: reduce) { .iris-spin, .iris-spin-rev, .iris-pupil { animation: none; } }
 
 /* ===== Marca ===== */
 .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; font-size: 19px; letter-spacing: -0.03em; color: var(--iris-text); }
@@ -164,7 +184,8 @@ tr:hover td { background: var(--iris-surface-2); }
 .topbar-in { display: flex; justify-content: space-between; align-items: center; padding: 14px 24px; max-width: 1180px; margin: 0 auto; gap: 16px; }
 .topbar nav a:not(.btn) { color: var(--iris-muted); font-size: 14px; font-weight: 500; }
 .topbar nav a:not(.btn):hover { color: var(--iris-text); text-decoration: none; }
-.hero { padding: clamp(64px, 10vw, 120px) 24px 56px; max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: 48px; align-items: center; }
+.hero { padding: clamp(72px, 12vw, 150px) 24px clamp(64px, 10vw, 130px); max-width: 1180px; margin: 0 auto; }
+.hero > div { max-width: 640px; }
 .hero h1 { font-size: clamp(38px, 5.6vw, 66px); letter-spacing: -0.045em; line-height: 1.02; margin: 0; font-weight: 800; text-wrap: balance; }
 .hero h1 span { color: var(--iris-green); }
 .hero p.lead { color: var(--iris-muted); font-size: 18px; line-height: 1.55; max-width: 560px; margin: 20px 0 30px; }
@@ -174,10 +195,15 @@ tr:hover td { background: var(--iris-surface-2); }
 .stats div { display: flex; flex-direction: column; }
 .stats strong { font-size: 32px; font-weight: 800; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
 .stats span { color: var(--iris-muted); font-size: 13px; }
-@media (max-width: 900px) { .hero { grid-template-columns: 1fr; } }
+.how { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 48px; align-items: center; }
+.steps { list-style: none; padding: 0; margin: 26px 0 0; display: flex; flex-direction: column; gap: 18px; }
+.steps li { display: flex; gap: 14px; align-items: flex-start; }
+.steps li > span { width: 34px; height: 34px; border-radius: 10px; background: var(--iris-green); color: #03140a; font-weight: 800; display: grid; place-items: center; flex: none; }
+.steps p { margin: 2px 0 0; color: var(--iris-muted); font-size: 14.5px; }
+@media (max-width: 900px) { .how { grid-template-columns: 1fr; } }
 
 /* Prévia do produto no hero */
-.preview { background: rgba(11, 14, 12, 0.85); border: 1px solid var(--iris-line-strong); border-radius: 22px; padding: 18px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55); }
+.preview { background: rgba(11, 14, 12, 0.72); backdrop-filter: blur(10px); border: 1px solid var(--iris-line-strong); border-radius: 22px; padding: 18px; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55); }
 .preview-head { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--iris-line); margin-bottom: 14px; }
 .preview-chat { display: flex; flex-direction: column; gap: 10px; }
 .preview .bubble { max-width: 85%; }
