@@ -11,7 +11,7 @@
   "dependencies": {
     "@astryxdesign/core": "latest",
     "@astryxdesign/theme-neutral": "latest",
-    "@iris/shared": "*",
+    "@iris/shared": "file:../../packages/shared",
     "@stylexjs/stylex": "latest",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.0",

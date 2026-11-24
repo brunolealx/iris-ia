@@ -11,6 +11,6 @@
     "test": "node --test \"test/**/*.test.js\""
   },
   "dependencies": {
-    "@iris/shared": "*"
+    "@iris/shared": "file:../../packages/shared"
   }
 }
