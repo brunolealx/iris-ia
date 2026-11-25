@@ -44,7 +44,7 @@ export default async function Admin() {
             {(orgs || []).map((o) => (
               <tr key={o.id}>
                 <td>{o.name}<div className="small muted">{o.id}</div></td>
-                <td className="small">{new Date(o.created_at).toLocaleDateString('pt-BR')}</td>
+                <td className="small">{new Date(o.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</td>
                 <td className="small">{use[o.id]?.ai_replies || 0} / {use[o.id]?.messages_in || 0}</td>
                 <td>
                   <form action={setPlan} className="row">

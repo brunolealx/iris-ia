@@ -38,7 +38,7 @@ export default async function Vendas() {
               const [cls, label] = NFE[o.nfe_status] || ['', o.nfe_status];
               return (
                 <tr key={o.id}>
-                  <td className="small">{new Date(o.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td className="small">{new Date(o.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</td>
                   <td className="small">{o.source === 'mercadolivre' ? 'ML ' : ''}#{o.external_id}</td>
                   <td>{o.contacts?.name || o.buyer?.nickname || '-'}</td>
                   <td className="small">{(o.items || []).map((i: any) => `${i.quantity}x ${i.title}`).join(', ')}</td>

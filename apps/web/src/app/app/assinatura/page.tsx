@@ -18,7 +18,7 @@ export default async function Assinatura({ searchParams }: { searchParams: Promi
   return (
     <>
       <div className="page-head">
-        <div><h1>Assinatura</h1><p>Plano atual: <strong>{plan.name}</strong> · <span className={`badge ${cls}`}>{label}</span>{org.status === 'trial' && ` até ${new Date(org.trial_ends_at).toLocaleDateString('pt-BR')}`}</p></div>
+        <div><h1>Assinatura</h1><p>Plano atual: <strong>{plan.name}</strong> · <span className={`badge ${cls}`}>{label}</span>{org.status === 'trial' && ` até ${new Date(org.trial_ends_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}`}</p></div>
       </div>
       {sp.ok && <div className="box" style={{ borderColor: 'var(--iris-green)', marginBottom: 14 }}>Pagamento recebido pelo Mercado Pago. O plano é ativado assim que a assinatura for autorizada (alguns minutos).</div>}
       {sp.erro && <div className="box" style={{ borderColor: 'var(--iris-danger)', marginBottom: 14 }}>Não foi possível abrir o checkout: {sp.erro}</div>}

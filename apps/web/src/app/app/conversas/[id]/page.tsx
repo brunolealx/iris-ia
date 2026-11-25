@@ -32,7 +32,7 @@ export default async function Conversa({ params }: { params: Promise<{ id: strin
           <div key={m.id} className={`bubble ${m.author === 'system' ? 'system' : m.direction}`}>
             {m.text}
             <div className="small muted" style={{ marginTop: 4 }}>
-              {m.author === 'ai' ? 'IA' : m.author === 'human' ? 'Equipe' : m.author === 'customer' ? 'Cliente' : 'Sistema'} · {new Date(m.created_at).toLocaleString('pt-BR')}
+              {m.author === 'ai' ? 'IA' : m.author === 'human' ? 'Equipe' : m.author === 'customer' ? 'Cliente' : 'Sistema'} · {new Date(m.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}
             </div>
           </div>
         ))}

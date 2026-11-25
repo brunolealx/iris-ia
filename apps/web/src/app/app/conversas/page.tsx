@@ -63,7 +63,7 @@ export default async function Conversas() {
                 <td>{CH[c.channel]}</td>
                 <td>{KIND[c.kind]}</td>
                 <td><span className={`badge ${c.ai_paused ? 'warn' : 'ok'}`}>{c.ai_paused ? 'pausada' : 'ativa'}</span></td>
-                <td className="muted small">{new Date(c.last_message_at).toLocaleString('pt-BR')}</td>
+                <td className="muted small">{new Date(c.last_message_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</td>
               </tr>
             ))}
           </tbody>

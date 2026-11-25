@@ -86,9 +86,10 @@ export async function handle(req, res) {
       }
       send(res, 200, 'ok');
       later(async () => {
-        const { messages } = wa.parseWebhook(JSON.parse(raw));
+        const { messages, statuses } = wa.parseWebhook(JSON.parse(raw));
         stats.waLastMessages = messages.length;
         for (const m of messages) await enqueue('wa.message', null, m, `wa:${m.id}`);
+        for (const st of statuses) if (st.status === 'failed') await enqueue('wa.status', null, st, `wa-st:${st.id}`);
       });
       return;
     }

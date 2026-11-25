@@ -85,7 +85,7 @@ export default async function Notas() {
               const [cls, label] = STATUS[n.status] || ['', n.status];
               return (
                 <tr key={n.id}>
-                  <td className="small">{new Date(n.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td className="small">{new Date(n.created_at).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</td>
                   <td className="small">
                     {n.nfse_number ? <>NFS-e {n.nfse_number}</> : '-'}
                     {n.number && <div className="muted">DPS {n.serie}/{n.number}</div>}
