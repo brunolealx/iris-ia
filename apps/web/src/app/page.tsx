@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import { createClient } from '@supabase/supabase-js';
 import { brl } from '@iris/shared/plans';
 import { TechBackground } from '@/components/background';
@@ -63,8 +62,14 @@ export default async function Landing() {
             <div className="absolute inset-x-0 bottom-0 aspect-square rounded-full bg-linear-to-br from-iris via-cyan-400 to-violet-500 p-[2px]">
               <div className="size-full rounded-full bg-[radial-gradient(circle_at_50%_40%,rgb(34_197_94/0.22),var(--color-bg)_70%)]" />
             </div>
-            <div className="absolute inset-0 overflow-hidden rounded-b-full">
-              <Image src="/bruno.webp" alt="Bruno, fundador da Iris" fill priority sizes="(max-width: 768px) 80vw, 400px" className="object-cover object-top" />
+            {/* Provisório até ter a foto: balão de conversa grande no verde do WhatsApp */}
+            <div className="absolute inset-x-0 bottom-0 grid aspect-square place-items-center">
+              <svg viewBox="0 0 64 64" className="w-[58%] drop-shadow-[0_20px_50px_rgb(37_211_102/0.45)]" aria-hidden="true">
+                <path d="M32 6C17.1 6 5 16.9 5 30.3c0 7.4 3.7 14 9.6 18.5L12 58l10.6-5.4c2.9.9 6.1 1.3 9.4 1.3 14.9 0 27-10.9 27-24.3S46.9 6 32 6Z" fill="#25D366" />
+                <circle cx="21" cy="30.5" r="3.6" fill="#fff" />
+                <circle cx="32" cy="30.5" r="3.6" fill="#fff" />
+                <circle cx="43" cy="30.5" r="3.6" fill="#fff" />
+              </svg>
             </div>
           </div>
 
