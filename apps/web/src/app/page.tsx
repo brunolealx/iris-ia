@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { createClient } from '@supabase/supabase-js';
 import { brl } from '@iris/shared/plans';
 import { TechBackground } from '@/components/background';
@@ -40,30 +41,58 @@ export default async function Landing() {
         </div>
       </header>
 
-      <section className={`${wrap} pt-[clamp(72px,12vw,150px)] pb-[clamp(64px,10vw,130px)]`}>
-        <div className="max-w-[640px]">
-          <span className="mb-5.5 inline-flex items-center gap-2 rounded-full bg-white/6 py-1.5 pr-3 pl-1.5 text-[13px] font-semibold">
-            <b className="rounded-full bg-iris px-2 py-0.5 text-xs text-iris-ink">Novo</b> Atendimento com IA para lojistas
+      <section className={`${wrap} grid items-center gap-10 pt-[clamp(48px,8vw,96px)] pb-10 md:grid-cols-[1.05fr_1fr]`}>
+        <div className="max-w-[600px]">
+          <span className="mb-6 inline-flex items-center gap-2 rounded-full bg-white/6 py-1.5 pr-3 pl-1.5 text-[13px] font-semibold">
+            <b className="rounded-full bg-iris px-2 py-0.5 text-xs text-iris-ink">Novo</b> IA de atendimento para lojistas
           </span>
-          <h1 className="m-0 text-[clamp(38px,5.6vw,66px)] leading-[1.02] font-extrabold tracking-[-0.045em] text-balance">
-            Sua loja vendendo <span className="text-iris">24 horas</span> no WhatsApp e no Mercado Livre
+          <h1 className="m-0 text-[clamp(34px,4.6vw,54px)] leading-[1.08] font-bold tracking-[-0.035em] text-balance">
+            Enquanto você cuida do seu negócio, seus clientes{' '}
+            <span className="bg-linear-to-r from-cyan-300 via-iris to-violet-400 bg-clip-text font-extrabold text-transparent">nunca ficam sem resposta</span>
           </h1>
-          <p className="mt-5 mb-7.5 max-w-[560px] text-lg leading-relaxed text-muted">
-            A Iris responde seus clientes, organiza as vendas no CRM, emite as notas fiscais e mantém tudo em planilhas no seu Google Drive.
+          <p className="mt-6 mb-8 max-w-[520px] text-lg leading-relaxed text-muted">
+            A Iris responde no WhatsApp e no Mercado Livre, organiza as vendas, emite as notas e deixa tudo pronto para converter, sem sobrecarregar sua equipe.
           </p>
-          <div className="flex flex-wrap gap-3">
-            <Link className="btn lg" href="/entrar?cadastro=1">Testar grátis por 14 dias <IconArrow /></Link>
-            <a className="btn lg ghost" href="#planos">Ver planos</a>
-          </div>
-          <dl className="mt-9 flex flex-wrap gap-8">
-            {[['24h', 'atendimento'], ['14', 'dias grátis'], ['5', 'integrações']].map(([n, l]) => (
-              <div key={l} className="flex flex-col-reverse">
-                <dt className="text-[13px] text-muted">{l}</dt>
-                <dd className="m-0 text-[32px] font-extrabold tracking-[-0.04em] tabular-nums">{n}</dd>
-              </div>
-            ))}
-          </dl>
+          <Link className="btn lg" href="/entrar?cadastro=1">Testar grátis por 14 dias <IconArrow /></Link>
+          <a href="#planos" className="mt-4 block w-fit pl-1 text-sm font-semibold text-ink hover:text-iris">Ver planos e preços</a>
         </div>
+
+        {/* Foto com o círculo: a cabeça sai por cima, o arco de baixo recorta o corpo */}
+        <div className="relative mx-auto w-full max-w-[460px] pl-14 sm:pl-20">
+          <div className="relative aspect-[5/6]">
+            <div className="absolute inset-x-0 bottom-0 aspect-square rounded-full bg-linear-to-br from-iris via-cyan-400 to-violet-500 p-[2px]">
+              <div className="size-full rounded-full bg-[radial-gradient(circle_at_50%_40%,rgb(34_197_94/0.22),var(--color-bg)_70%)]" />
+            </div>
+            <div className="absolute inset-0 overflow-hidden rounded-b-full">
+              <Image src="/bruno.webp" alt="Bruno, fundador da Iris" fill priority sizes="(max-width: 768px) 80vw, 400px" className="object-cover object-top" />
+            </div>
+          </div>
+
+          {[
+            { Icon: IconChat, tone: 't-green', pos: 'top-[18%] left-6 sm:left-10' },
+            { Icon: IconCart, tone: 't-yellow', pos: 'top-[38%] left-0' },
+            { Icon: IconSheet, tone: 't-cyan', pos: 'top-[60%] left-1 sm:left-3' },
+            { Icon: IconInvoice, tone: 't-orange', pos: 'top-[80%] left-8 sm:left-14' },
+          ].map(({ Icon, tone, pos }, i) => (
+            <span key={i} className={`icon-tile sm absolute ${tone} ${pos} shadow-[0_0_0_6px_rgb(255_255_255/0.06),0_10px_30px_rgb(0_0_0/0.5)]`}><Icon size={18} /></span>
+          ))}
+
+          <div className="absolute right-0 bottom-[6%] flex w-[78%] flex-col gap-2 sm:-right-6" aria-label="Exemplo ilustrativo de atendimento">
+            <div className="self-end rounded-xl rounded-br-sm bg-violet-500/90 px-3 py-1.5 text-[12px] text-white shadow-lg">Oi, bom dia! Tudo bem? <small className="opacity-70">11:31</small></div>
+            <div className="self-end rounded-xl rounded-br-sm bg-violet-500/90 px-3 py-1.5 text-[12px] text-white shadow-lg">Meu pedido já foi enviado? <small className="opacity-70">11:31</small></div>
+            <div className="rounded-xl bg-white px-3 py-2 text-[12px] text-zinc-800 shadow-xl">
+              <b className="text-iris-strong">Iris</b> <span className="text-zinc-500">· IA</span>
+              <p className="m-0 mt-0.5">Bom dia, Jéssica! Sim, já enviamos. Deve chegar hoje mesmo!</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className={`${wrap} pb-14`} aria-label="Integrações">
+        <p className="mb-4 text-center text-xs font-semibold tracking-widest text-muted uppercase">Integra com</p>
+        <ul className="m-0 flex list-none flex-wrap items-center justify-center gap-x-10 gap-y-3 p-0 text-lg font-bold tracking-tight text-white/45">
+          {['WhatsApp', 'Mercado Livre', 'Google Drive', 'Google Sheets', 'NFS-e Nacional'].map((n) => <li key={n}>{n}</li>)}
+        </ul>
       </section>
 
       <section className={`${wrap} grid items-center gap-12 py-14 md:grid-cols-2`}>
