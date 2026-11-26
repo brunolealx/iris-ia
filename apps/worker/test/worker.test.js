@@ -475,3 +475,126 @@ test('Webhook de saída: assinado e registrado', async () => {
     f.restore();
   }
 });
+
+// ---------- MCP da Iris (processo de verdade falando com a API de verdade) ----------
+import { spawn } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+function mcpClient(env = {}) {
+  const bin = fileURLToPath(new URL('../../../packages/mcp-server/index.js', import.meta.url));
+  const child = spawn(process.execPath, [bin], { env: { ...process.env, IRIS_API_URL: base, IRIS_API_TOKEN: apiKey.full, ...env }, stdio: ['pipe', 'pipe', 'pipe'] });
+  const waiting = new Map();
+  let buf = '';
+  let seq = 0;
+  child.stdout.on('data', (d) => {
+    buf += d;
+    let i;
+    while ((i = buf.indexOf('\n')) >= 0) {
+      const msg = JSON.parse(buf.slice(0, i));
+      buf = buf.slice(i + 1);
+      waiting.get(msg.id)?.(msg);
+      waiting.delete(msg.id);
+    }
+  });
+  const request = (method, params) => new Promise((resolve) => {
+    const id = ++seq;
+    waiting.set(id, resolve);
+    child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', id, method, params })}\n`);
+  });
+  const call = async (name, args = {}) => {
+    const r = await request('tools/call', { name, arguments: args });
+    const text = r.result.content[0].text;
+    return { error: r.result.isError ? text : null, data: r.result.isError ? null : JSON.parse(text) };
+  };
+  return { request, call, close: () => child.kill() };
+}
+
+function seedCrm() {
+  const t = db.tables;
+  const c1 = { id: 'aaaaaaaa-0000-4000-8000-000000000001', org_id: ORG, channel: 'whatsapp', external_id: '5515999990000', name: 'Jéssica Souza', phone: '+5515999990000', stage: 'lead', tags: [], notes: '', value_cents: 0, last_message_at: '2026-11-26T10:00:00Z' };
+  const c2 = { id: 'aaaaaaaa-0000-4000-8000-000000000002', org_id: ORG, channel: 'mercadolivre', external_id: '777', name: 'Marcos', stage: 'cliente', tags: [], notes: '', value_cents: 5000, last_message_at: '2026-11-25T10:00:00Z' };
+  t.contacts = [c1, c2];
+  t.conversations = [{ id: 'bbbbbbbb-0000-4000-8000-000000000001', org_id: ORG, contact_id: c1.id, channel: 'whatsapp', external_ref: '5515999990000', kind: 'chat', status: 'open', ai_paused: false, meta: {}, last_message_at: '2026-11-26T10:00:00Z' }];
+  t.messages = [
+    { id: 'm1', org_id: ORG, conversation_id: 'bbbbbbbb-0000-4000-8000-000000000001', direction: 'in', author: 'customer', text: 'Meu pedido já foi enviado?', created_at: '2026-11-26T10:00:00Z' },
+    { id: 'm2', org_id: ORG, conversation_id: 'bbbbbbbb-0000-4000-8000-000000000001', direction: 'out', author: 'ai', text: 'Sim! Chega hoje.', created_at: '2026-11-26T10:00:05Z' },
+  ];
+  t.drafts = [{ id: 'cccccccc-0000-4000-8000-000000000001', org_id: ORG, conversation_id: 'bbbbbbbb-0000-4000-8000-000000000001', target: { channel: 'whatsapp', to: '5515999990000' }, customer_text: 'Quero reembolso', reply: 'Vou verificar seu reembolso.', reason: 'assunto sensível', status: 'pending', created_at: '2026-11-26T10:01:00Z' }];
+  t.orders = [{ id: 'o1', org_id: ORG, source: 'mercadolivre', external_id: '2000', status: 'paid', total_cents: 5000, items: [], nfe_status: 'none', created_at: new Date().toISOString() }];
+}
+
+test('MCP: handshake e lista de ferramentas', async () => {
+  const mcp = mcpClient();
+  try {
+    const init = await mcp.request('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'teste', version: '1' } });
+    assert.equal(init.result.protocolVersion, '2025-06-18');
+    assert.equal(init.result.serverInfo.name, 'iris');
+    const { result } = await mcp.request('tools/list');
+    const names = result.tools.map((t) => t.name);
+    for (const n of ['iris_resumo', 'iris_contatos_listar', 'iris_conversa_responder', 'iris_sugestao_aprovar', 'iris_produtos_buscar', 'iris_venda_registrar']) assert.ok(names.includes(n), n);
+    assert.ok(result.tools.every((t) => t.inputSchema.type === 'object' && !('run' in t)));
+    assert.equal(result.tools.find((t) => t.name === 'iris_resumo').annotations.readOnlyHint, true);
+    const bad = await mcp.request('nao/existe');
+    assert.equal(bad.error.code, -32601);
+  } finally { mcp.close(); }
+});
+
+test('MCP: lê resumo, contatos, conversas e mensagens', async () => {
+  seedCrm();
+  const mcp = mcpClient();
+  try {
+    const resumo = (await mcp.call('iris_resumo')).data;
+    assert.equal(resumo.open_conversations, 1);
+    assert.equal(resumo.pending_drafts, 1);
+    assert.deepEqual(resumo.funnel, { lead: 1, cliente: 1 });
+    assert.equal(resumo.revenue_30d, 50);
+
+    const busca = (await mcp.call('iris_contatos_listar', { busca: 'jessica' })).data;
+    assert.deepEqual(busca.map((c) => c.name), ['Jéssica Souza']);
+    const clientes = (await mcp.call('iris_contatos_listar', { etapa: 'cliente' })).data;
+    assert.deepEqual(clientes.map((c) => c.name), ['Marcos']);
+
+    const convs = (await mcp.call('iris_conversas_listar', { status: 'open' })).data;
+    assert.equal(convs[0].contact.name, 'Jéssica Souza');
+    const msgs = (await mcp.call('iris_conversa_mensagens', { id: convs[0].id })).data;
+    assert.deepEqual(msgs.map((m) => m.author), ['customer', 'ai']);
+  } finally { mcp.close(); }
+});
+
+test('MCP: move no funil, responde, pausa IA e aprova sugestão', async () => {
+  seedCrm();
+  const mcp = mcpClient();
+  try {
+    const c = (await mcp.call('iris_contato_atualizar', { id: 'aaaaaaaa-0000-4000-8000-000000000001', etapa: 'negociacao', etiquetas: ['vip'] })).data;
+    assert.equal(c.stage, 'negociacao');
+    assert.deepEqual(db.tables.contacts[0].tags, ['vip']);
+
+    const conv = 'bbbbbbbb-0000-4000-8000-000000000001';
+    assert.deepEqual((await mcp.call('iris_conversa_responder', { id: conv, texto: 'Já confiro pra você!' })).data, { queued: true });
+    const job = db.tables.jobs.find((j) => j.kind === 'outbound.send');
+    assert.deepEqual(job.payload, { conversationId: conv, text: 'Já confiro pra você!' });
+
+    assert.equal((await mcp.call('iris_conversa_atualizar', { id: conv, ia_pausada: true })).data.ai_paused, true);
+
+    await mcp.call('iris_sugestao_aprovar', { id: 'cccccccc-0000-4000-8000-000000000001', texto: 'Seu reembolso foi aprovado.' });
+    assert.equal(db.tables.drafts[0].status, 'queued');
+    assert.ok(db.tables.jobs.some((j) => j.payload.draftId === 'cccccccc-0000-4000-8000-000000000001' && j.payload.text === 'Seu reembolso foi aprovado.'));
+  } finally { mcp.close(); }
+});
+
+test('MCP: erros claros (sem chave, id de outra conta, plano sem API)', async () => {
+  seedCrm();
+  const semChave = mcpClient({ IRIS_API_TOKEN: '' });
+  try {
+    assert.match((await semChave.call('iris_resumo')).error, /IRIS_API_TOKEN/);
+  } finally { semChave.close(); }
+
+  const mcp = mcpClient();
+  try {
+    assert.match((await mcp.call('iris_contato_ver', { id: '99999999-0000-4000-8000-000000000000' })).error, /404/);
+    assert.match((await mcp.call('iris_contato_atualizar', { id: 'aaaaaaaa-0000-4000-8000-000000000001', etapa: 'xyz' })).error, /etapa inválida/);
+    db.tables.organizations[0].plan_id = 'gratis';
+    forgetOrg(ORG);
+    assert.match((await mcp.call('iris_resumo')).error, /403/);
+  } finally { mcp.close(); }
+});

@@ -12,6 +12,7 @@ A Iris atende os clientes da loja no **WhatsApp** (API oficial da Meta) e no **M
 | **Admin da plataforma** | Todos os clientes, MRR, uso da IA, trocar plano/status | `apps/web/src/app/admin` |
 | **Worker** | Webhooks (Meta, ML, Mercado Pago), fila, IA, envios, NF-e (Faturador do ML), NFS-e Nacional, Google, API pública, webhooks de saída | `apps/worker` (Node 22, **sem dependências**) |
 | **Banco** | Multiempresa com RLS, segredos criptografados (AES-256-GCM), fila, uso mensal | `supabase/migrations/0001_iris.sql` |
+| **MCP** | Servidor MCP que expõe a API para agentes de IA | `packages/mcp-server` |
 | **Compartilhado** | Criptografia, regras de envio (o que vai para aprovação), regras de plano | `packages/shared` |
 
 ### Canais e integrações
@@ -22,7 +23,8 @@ A Iris atende os clientes da loja no **WhatsApp** (API oficial da Meta) e no **M
 - **Produtos**: anúncios do ML entram sozinhos; também CSV em massa, cadastro um por um e API.
 - **Google Drive** (escopo `drive.file`): cria `Iris — Empresa/` com as subpastas (Notas Fiscais/ano/mês, Vendas, Funcionários, Financeiro, Produtos, Fornecedores, Contratos, Relatórios, Marketing) e a planilha **Iris — Gestão** com as abas Painel, Vendas (com comissão), Produtos (margem e reposição), Clientes, Funcionários, Folha de Pagamento (FGTS automático), Folgas e Férias, Contas a Pagar, Contas a Receber, Fluxo de Caixa e Fornecedores. Cada venda ou cliente novo vira uma linha, e o XML de cada NF-e é salvo na pasta.
 - **Claude**: Haiku nos planos básicos e Sonnet no Pro. Responde só com os dados do negócio, do catálogo e do anúncio.
-- **API pública + webhooks**: o sistema do lojista envia vendas, contatos, produtos e mensagens, e recebe eventos assinados com HMAC.
+- **API pública + webhooks**: o sistema do lojista envia vendas, contatos, produtos e mensagens, e recebe eventos assinados com HMAC. Também lê e age no CRM: resumo, contatos, conversas, mensagens, sugestões da IA (aprovar/descartar), produtos e vendas.
+- **MCP da Iris** (`packages/mcp-server`, pacote `iris-ia-mcp`): o lojista usa a conta pelo Claude, n8n ou Cursor em linguagem natural ("aprova as sugestões pendentes", "move a Jéssica para negociação"). 17 ferramentas, stdio, sem dependências.
 - **Mercado Pago**: assinatura recorrente (preapproval), com webhook validado por `x-signature`.
 
 ### Segurança

@@ -1,0 +1,11 @@
+{
+  "name": "iris-ia-mcp",
+  "version": "1.0.0",
+  "description": "MCP da Iris: use sua conta Iris (WhatsApp, Mercado Livre, CRM, catálogo e vendas) pelo Claude e outros agentes de IA",
+  "type": "module",
+  "bin": { "iris-ia-mcp": "index.js" },
+  "files": ["index.js", "README.md"],
+  "engines": { "node": ">=20" },
+  "keywords": ["mcp", "iris", "whatsapp", "mercadolivre", "crm", "ai-agent"],
+  "license": "UNLICENSED"
+}

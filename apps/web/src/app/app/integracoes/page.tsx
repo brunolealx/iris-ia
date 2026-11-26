@@ -170,6 +170,19 @@ export default async function Integracoes() {
             </div>
           </div>
           <div className="box stack">
+            <strong>Usar a Iris pelo Claude (MCP)</strong>
+            <span className="small muted">
+              Converse com a sua loja pelo Claude: “quais clientes estão em negociação?”, “responde a Jéssica que o pedido saiu”, “aprova as sugestões pendentes”.
+              Rode no terminal com a sua chave da API:
+            </span>
+            <div className="code">
+              claude mcp add iris \<br />
+              &nbsp;&nbsp;-e IRIS_API_TOKEN=iris_… \<br />
+              &nbsp;&nbsp;-e IRIS_API_URL={worker} \<br />
+              &nbsp;&nbsp;-- npx -y iris-ia-mcp
+            </div>
+          </div>
+          <div className="box stack">
             <strong>Webhooks (a Iris avisa o seu sistema)</strong>
             {(hooks || []).map((h) => (
               <div key={h.id} className="stack" style={{ gap: 4 }}>
