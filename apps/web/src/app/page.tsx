@@ -194,7 +194,7 @@ export default async function Landing() {
       <footer className="border-t border-line">
         <div className={`${wrap} flex flex-wrap justify-between gap-4 pt-7 pb-10 text-[13px] text-muted`}>
           <span className="brand text-[15px]"><IrisMark size={22} /> Iris</span>
-          <span>© {new Date().getFullYear()} Iris · Atendimento com IA para lojistas</span>
+          <span className="flex flex-wrap gap-4"><Link href="/termos" className="text-muted hover:text-ink">Termos de uso</Link><span>© {new Date().getFullYear()} Iris · Atendimento com IA para lojistas</span></span>
         </div>
       </footer>
     </>

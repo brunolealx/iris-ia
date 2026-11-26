@@ -46,6 +46,7 @@ export function EntrarForm() {
         {mode === 'cadastro' && <label>Nome da empresa<input name="company" required maxLength={80} /></label>}
         <label>E-mail<input name="email" type="email" required autoComplete="email" /></label>
         <label>Senha<input name="password" type="password" required minLength={8} autoComplete={mode === 'cadastro' ? 'new-password' : 'current-password'} /></label>
+        {mode === 'cadastro' && <p className="m-0 text-xs text-muted">Ao criar a conta, você aceita os <a href="/termos" target="_blank">Termos de Uso e Contrato de Assinatura</a>.</p>}
         <button className="btn" disabled={busy}>{busy ? 'Aguarde…' : mode === 'cadastro' ? 'Criar conta' : 'Entrar'}</button>
         <button type="button" className="btn ghost" onClick={google}>Continuar com Google</button>
         {msg && <p className="small text-iris">{msg}</p>}

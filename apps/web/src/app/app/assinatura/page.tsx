@@ -41,7 +41,7 @@ export default async function Assinatura({ searchParams }: { searchParams: Promi
           </form>
         ))}
       </div>
-      <p className="small muted" style={{ marginTop: 14 }}>Cobrança mensal recorrente no cartão pelo Mercado Pago. Para cancelar, use o link da assinatura no e-mail do Mercado Pago ou fale com o suporte.</p>
+      <p className="small muted" style={{ marginTop: 14 }}>Cobrança mensal recorrente no cartão pelo Mercado Pago. Para cancelar, use o link da assinatura no e-mail do Mercado Pago ou fale com o suporte. Veja os <a href="/termos" target="_blank">Termos de Uso</a>.</p>
     </>
   );
 }
