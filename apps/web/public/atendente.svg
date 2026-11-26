@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 600" role="img" aria-label="Ilustração de atendente usando o celular">
+  <defs>
+    <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6cdb3"/><stop offset="1" stop-color="#e9b090"/>
+    </linearGradient>
+    <linearGradient id="blazer" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7b6cf"/><stop offset="1" stop-color="#e48aae"/>
+    </linearGradient>
+    <linearGradient id="hair" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a2c1d"/><stop offset="1" stop-color="#2a170f"/>
+    </linearGradient>
+    <linearGradient id="phone" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbd3e0"/><stop offset="1" stop-color="#eaa3bd"/>
+    </linearGradient>
+  </defs>
+
+  <!-- cabelo de trás -->
+  <path d="M150 210 C140 120 200 70 262 72 C340 74 380 140 368 220 C364 270 372 300 362 326 C344 342 314 332 292 316 L224 316 C202 332 172 342 152 326 C140 300 152 260 150 210 Z" fill="url(#hair)"/>
+
+  <!-- pescoço -->
+  <path d="M222 300 L282 300 L290 380 L214 380 Z" fill="#e2a585"/>
+
+  <!-- corpo: blusa branca + blazer -->
+  <path d="M60 600 C60 470 120 400 214 372 L290 372 C384 400 440 470 440 600 Z" fill="url(#blazer)"/>
+  <path d="M214 372 L252 470 L290 372 Z" fill="#fff6f8"/>
+  <path d="M214 372 L196 384 L232 520 L252 470 Z" fill="#d97aa1"/>
+  <path d="M290 372 L308 384 L272 520 L252 470 Z" fill="#d97aa1"/>
+  <path d="M120 450 C140 520 150 560 152 600" stroke="#d97aa1" stroke-width="4" fill="none" opacity=".6"/>
+  <circle cx="300" cy="540" r="5" fill="#c86b92"/>
+
+  <!-- rosto -->
+  <ellipse cx="258" cy="215" rx="84" ry="98" fill="url(#skin)"/>
+  <ellipse cx="176" cy="225" rx="12" ry="20" fill="#e9b090"/>
+  <ellipse cx="340" cy="225" rx="12" ry="20" fill="#e9b090"/>
+  <circle cx="176" cy="248" r="4" fill="#f4d58d"/>
+
+  <!-- franja e laterais do cabelo (chanel) -->
+  <path d="M168 200 C170 120 230 96 280 104 C330 112 356 150 352 200 C330 160 290 140 250 150 C220 158 196 176 168 200 Z" fill="url(#hair)"/>
+  <path d="M168 190 C156 240 160 290 186 318 C178 270 180 230 192 196 Z" fill="url(#hair)"/>
+  <path d="M350 190 C362 240 360 290 332 318 C340 270 338 230 326 196 Z" fill="url(#hair)"/>
+  <path d="M215 128 C250 112 300 118 330 150" stroke="#6b4330" stroke-width="3" fill="none" opacity=".7"/>
+
+  <!-- sobrancelhas -->
+  <path d="M206 182 C218 174 234 174 244 180" stroke="#3a2216" stroke-width="5" stroke-linecap="round" fill="none"/>
+  <path d="M276 180 C286 174 302 174 314 182" stroke="#3a2216" stroke-width="5" stroke-linecap="round" fill="none"/>
+
+  <!-- olhos sorrindo -->
+  <path d="M212 210 C220 202 234 202 240 210" stroke="#2a1a12" stroke-width="4" stroke-linecap="round" fill="none"/>
+  <path d="M280 210 C286 202 300 202 308 210" stroke="#2a1a12" stroke-width="4" stroke-linecap="round" fill="none"/>
+
+  <!-- óculos -->
+  <rect x="196" y="190" width="58" height="42" rx="18" fill="#fff" fill-opacity=".12" stroke="#3b3b3b" stroke-width="3.5"/>
+  <rect x="266" y="190" width="58" height="42" rx="18" fill="#fff" fill-opacity=".12" stroke="#3b3b3b" stroke-width="3.5"/>
+  <path d="M254 208 C258 204 262 204 266 208" stroke="#3b3b3b" stroke-width="3.5" fill="none"/>
+  <path d="M196 204 L180 198 M324 204 L338 198" stroke="#3b3b3b" stroke-width="3"/>
+
+  <!-- nariz, bochechas e boca aberta sorrindo -->
+  <path d="M258 222 C254 240 252 248 262 252" stroke="#c98a6c" stroke-width="3" stroke-linecap="round" fill="none"/>
+  <ellipse cx="216" cy="248" rx="14" ry="8" fill="#f29aa6" opacity=".45"/>
+  <ellipse cx="304" cy="248" rx="14" ry="8" fill="#f29aa6" opacity=".45"/>
+  <path d="M226 268 C240 300 282 300 294 268 Z" fill="#7a2636"/>
+  <path d="M230 270 C244 280 278 280 290 270 L288 276 C276 282 244 282 232 276 Z" fill="#fff"/>
+  <path d="M240 290 C252 296 270 296 280 290 C270 284 250 284 240 290 Z" fill="#e0667c"/>
+
+  <!-- braço erguido segurando o celular -->
+  <path d="M96 600 C92 520 96 440 130 400 L170 420 C150 470 150 530 156 600 Z" fill="url(#blazer)"/>
+  <path d="M130 400 C120 360 116 330 124 300 L160 300 C164 340 168 380 170 420 Z" fill="url(#skin)"/>
+  <rect x="104" y="176" width="78" height="150" rx="16" fill="url(#phone)" stroke="#d98aa8" stroke-width="2"/>
+  <rect x="114" y="186" width="30" height="34" rx="9" fill="#e796b4"/>
+  <circle cx="123" cy="196" r="5.5" fill="#2b2b2b"/>
+  <circle cx="136" cy="210" r="5.5" fill="#2b2b2b"/>
+  <circle cx="136" cy="196" r="2.5" fill="#fff"/>
+  <!-- mão e dedos -->
+  <path d="M112 300 C108 280 110 262 122 256 L172 256 C182 262 184 286 176 306 C166 318 128 320 112 300 Z" fill="url(#skin)"/>
+  <path d="M176 262 C190 262 194 276 182 284 M178 282 C192 284 194 298 180 302" stroke="#e2a585" stroke-width="10" stroke-linecap="round" fill="none"/>
+  <path d="M104 240 C96 248 98 266 112 270" stroke="#e9b090" stroke-width="12" stroke-linecap="round" fill="none"/>
+</svg>

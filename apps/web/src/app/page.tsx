@@ -64,7 +64,7 @@ export default async function Landing() {
               <div className="size-full rounded-full bg-[radial-gradient(circle_at_50%_40%,rgb(34_197_94/0.22),var(--color-bg)_70%)]" />
             </div>
             <div className="absolute inset-0 overflow-hidden rounded-b-full">
-              <Image src="/bruno.webp" alt="Bruno, fundador da Iris" fill priority sizes="(max-width: 768px) 80vw, 400px" className="object-cover object-top" />
+              <Image src="/atendente.svg" alt="" fill priority unoptimized className="object-cover object-top" />
             </div>
           </div>
 
